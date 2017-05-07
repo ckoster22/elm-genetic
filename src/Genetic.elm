@@ -1,5 +1,6 @@
 module Genetic exposing (evolveSolution, Organism, Dna)
 
+import List.Nonempty as NonemptyList exposing (Nonempty)
 import Random exposing (Generator, Seed)
 
 
@@ -23,93 +24,152 @@ type alias Organism =
     }
 
 
+type alias Population =
+    Nonempty Organism
+
+
 type alias Options =
     { randomOrganismGenerator : Generator Organism
     , scoreOrganism : Dna -> Float
     , crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
     , mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-    , isDoneEvolving : Maybe Organism -> Int -> Bool
+    , isDoneEvolving : Organism -> Int -> Bool
     , initialSeed : Seed
     }
 
 
-type alias StepValue =
-    { nextPopulation : List Organism
-    , currentBestSolution : Maybe Organism
-    }
-
-
-evolveSolution : Options -> ( List Organism, Maybe Organism, Seed )
+evolveSolution : Options -> ( Population, Organism, Seed )
 evolveSolution options =
     let
-        ( initialPopulation, nextSeed ) =
+        ( initialPopulation_, seed2 ) =
             generateInitialPopulation options.randomOrganismGenerator options.initialSeed
-
-        stepValue =
-            { nextPopulation = initialPopulation
-            , currentBestSolution = Nothing
-            }
     in
-        recursivelyEvolve 0 options initialPopulation Nothing nextSeed
+        case initialPopulation_ of
+            Just initialPopulation ->
+                let
+                    ( nextPopulation, bestOrganism, seed3 ) =
+                        executeStep options initialPopulation seed2
+                in
+                    recursivelyEvolve 0 options initialPopulation bestOrganism seed3
+
+            Nothing ->
+                Debug.crash "Unable to produce random non-empty list"
 
 
-recursivelyEvolve : Int -> Options -> List Organism -> Maybe Organism -> Seed -> ( List Organism, Maybe Organism, Seed )
-recursivelyEvolve numGenerations options population bestOrganism_ seed =
-    if (options.isDoneEvolving bestOrganism_ numGenerations) then
-        ( population, bestOrganism_, seed )
+recursivelyEvolve : Int -> Options -> Population -> Organism -> Seed -> ( Population, Organism, Seed )
+recursivelyEvolve numGenerations options population bestOrganism seed =
+    if (options.isDoneEvolving bestOrganism numGenerations) then
+        ( population, bestOrganism, seed )
     else
         let
-            ( nextPopulation, nextBestOrganism_, nextSeed ) =
+            ( nextPopulation, nextBestOrganism, nextSeed ) =
                 executeStep options population seed
         in
-            recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism_ nextSeed
+            recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism nextSeed
 
 
-executeStep : Options -> List Organism -> Seed -> ( List Organism, Maybe Organism, Seed )
+executeStep : Options -> Population -> Seed -> ( Population, Organism, Seed )
 executeStep options population seed =
     let
-        bestSolution_ =
+        bestSolution =
             population
-                |> List.sortBy .score
-                |> List.head
+                |> NonemptyList.sortBy .score
+                |> NonemptyList.head
 
         ( nextPopulation, nextSeed ) =
             generateNextGeneration options population seed
     in
-        ( nextPopulation, bestSolution_, nextSeed )
+        ( nextPopulation, bestSolution, nextSeed )
 
 
-generateInitialPopulation : Generator Organism -> Seed -> ( List Organism, Seed )
+generateInitialPopulation : Generator Organism -> Seed -> ( Maybe (Nonempty Organism), Seed )
 generateInitialPopulation orgGenerator seed =
-    Random.step (Random.list population_size orgGenerator) seed
+    let
+        ( randomOrganisms, nextSeed ) =
+            Random.step (Random.list population_size orgGenerator) seed
+    in
+        ( NonemptyList.fromList randomOrganisms, nextSeed )
 
 
-generateNextGeneration : Options -> List Organism -> Seed -> ( List Organism, Seed )
+generateNextGeneration : Options -> Population -> Seed -> ( Population, Seed )
 generateNextGeneration options currPopulation seed =
     let
         bestHalfOfPopulation =
             currPopulation
-                |> List.sortBy .score
+                |> NonemptyList.sortBy .score
+                |> NonemptyList.toList
                 |> List.take half_population_size
-    in
-        bestHalfOfPopulation
-            |> List.foldl
-                (\currOrganism ( organisms, prevOrganism_, nextSeed ) ->
-                    case prevOrganism_ of
-                        Just prevOrganism ->
-                            let
-                                ( family, nextSeed2 ) =
-                                    produceFamily options prevOrganism currOrganism nextSeed
-                            in
-                                ( List.append organisms family, Nothing, nextSeed2 )
 
-                        Nothing ->
-                            ( organisms, Just currOrganism, nextSeed )
-                )
-                ( [], Nothing, seed )
-            |> (\( families, _, nextSeed ) ->
-                    ( families, nextSeed )
-               )
+        ( nextGeneration, nextSeed ) =
+            bestHalfOfPopulation
+                |> List.foldl
+                    (\currOrganism ( organisms, prevOrganism_, nextSeed ) ->
+                        case prevOrganism_ of
+                            Just prevOrganism ->
+                                let
+                                    ( family, nextSeed2 ) =
+                                        produceFamily options prevOrganism currOrganism nextSeed
+                                in
+                                    ( List.append organisms family, Nothing, nextSeed2 )
+
+                            Nothing ->
+                                ( organisms, Just currOrganism, nextSeed )
+                    )
+                    ( [], Nothing, seed )
+                |> (\( families, _, nextSeed ) ->
+                        ( families, nextSeed )
+                   )
+    in
+        ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
+
+
+
+-- takeFromNonemptyList : Int -> Nonempty a -> Nonempty a
+-- takeFromNonemptyList num nonemptyList =
+--     let
+--         initialList =
+--             NonemptyList.get 0 nonemptyList
+--                 |> NonemptyList.fromElement
+--     in
+--         nonemptyList
+--             |> NonemptyList.foldl
+--                 (\item ( accList, index ) ->
+--                     if index == 0 then
+--                         ( accList, index + 1 )
+--                     else
+--                         ( NonemptyList.cons (NonemptyList.get index nonemptyList) accList, index + 1 )
+--                 )
+--                 ( initialList, 0 )
+--             |> Tuple.first
+-- produceFamily : Options -> Organism -> Organism -> Seed -> ( Nonempty Organism, Seed )
+-- produceFamily options parent1 parent2 seed =
+--     let
+--         ( child1, seed2 ) =
+--             produceChild options parent1 parent2 seed
+--         ( child2, seed3 ) =
+--             produceChild options parent1 parent2 seed2
+--         ( child3, seed4 ) =
+--             produceChild options parent1 parent2 seed3
+--         bestParent =
+--             if parent1.score < parent2.score then
+--                 NonemptyList.fromElement parent1
+--             else
+--                 NonemptyList.fromElement parent2
+--         family =
+--             child1
+--                 |> NonemptyList.append child2
+--                 |> NonemptyList.append child3
+--                 |> NonemptyList.append bestParent
+--     in
+--         ( family, seed4 )
+-- produceChild : Options -> Organism -> Organism -> Seed -> ( Nonempty Organism, Seed )
+-- produceChild options parent1 parent2 seed =
+--     let
+--         ( childDna, nextSeed ) =
+--             options.crossoverDnas parent1.dna parent2.dna seed
+--                 |> options.mutateDna
+--     in
+--         ( NonemptyList.fromElement <| Organism childDna (options.scoreOrganism childDna), nextSeed )
 
 
 produceFamily : Options -> Organism -> Organism -> Seed -> ( List Organism, Seed )

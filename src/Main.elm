@@ -147,18 +147,13 @@ mutateDna ( dna, seed ) =
         ( mutatedDna, seed3 )
 
 
-isDoneEvolving : Maybe Organism -> Int -> Bool
-isDoneEvolving bestOrganism_ numGenerations =
-    case bestOrganism_ of
-        Just bestOrganism ->
-            let
-                _ =
-                    Debug.log "" (List.map Char.fromCode bestOrganism.dna |> String.fromList)
-            in
-                bestOrganism.score == 0 || numGenerations >= max_iterations
-
-        _ ->
-            False
+isDoneEvolving : Organism -> Int -> Bool
+isDoneEvolving bestOrganism numGenerations =
+    let
+        _ =
+            Debug.log "" (List.map Char.fromCode bestOrganism.dna |> String.fromList)
+    in
+        bestOrganism.score == 0 || numGenerations >= max_iterations
 
 
 view : Model -> Html Msg
