@@ -19,13 +19,13 @@ type alias Dna =
 
 type alias Organism =
     { dna : Dna
-    , score : Maybe Float
+    , score : Float
     }
 
 
 type alias Options =
     { randomOrganismGenerator : Generator Organism
-    , scoreOrganism : Organism -> Float
+    , scoreOrganism : Dna -> Float
     , crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
     , mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
     , isDoneEvolving : Maybe Organism -> Int -> Bool
@@ -68,20 +68,13 @@ recursivelyEvolve numGenerations options population bestOrganism_ seed =
 executeStep : Options -> List Organism -> Seed -> ( List Organism, Maybe Organism, Seed )
 executeStep options population seed =
     let
-        scoredPopulation =
-            population
-                |> List.map
-                    (\organism ->
-                        { organism | score = Just <| options.scoreOrganism organism }
-                    )
-
         bestSolution_ =
-            scoredPopulation
-                |> sortPopulationByScore
+            population
+                |> List.sortBy .score
                 |> List.head
 
         ( nextPopulation, nextSeed ) =
-            generateNextGeneration options scoredPopulation seed
+            generateNextGeneration options population seed
     in
         ( nextPopulation, bestSolution_, nextSeed )
 
@@ -96,7 +89,7 @@ generateNextGeneration options currPopulation seed =
     let
         bestHalfOfPopulation =
             currPopulation
-                |> sortPopulationByScore
+                |> List.sortBy .score
                 |> List.take half_population_size
     in
         bestHalfOfPopulation
@@ -132,15 +125,10 @@ produceFamily options parent1 parent2 seed =
             produceChild options parent1 parent2 seed3
 
         bestParent =
-            case ( parent1.score, parent2.score ) of
-                ( Just score1, Just score2 ) ->
-                    if score1 < score2 then
-                        parent1
-                    else
-                        parent2
-
-                _ ->
-                    Debug.crash "Not possible. Model your data better!"
+            if parent1.score < parent2.score then
+                parent1
+            else
+                parent2
     in
         ( [ child1, child2, child3, bestParent ], seed4 )
 
@@ -152,29 +140,4 @@ produceChild options parent1 parent2 seed =
             options.crossoverDnas parent1.dna parent2.dna seed
                 |> options.mutateDna
     in
-        ( Organism childDna Nothing, nextSeed )
-
-
-sortPopulationByScore : List Organism -> List Organism
-sortPopulationByScore population =
-    population
-        |> List.sortWith
-            (\organism1 organism2 ->
-                case ( organism1.score, organism2.score ) of
-                    ( Just score1, Just score2 ) ->
-                        if score1 > score2 then
-                            GT
-                        else if score1 < score2 then
-                            LT
-                        else
-                            EQ
-
-                    ( Just _, Nothing ) ->
-                        LT
-
-                    ( Nothing, Just _ ) ->
-                        GT
-
-                    _ ->
-                        EQ
-            )
+        ( Organism childDna (options.scoreOrganism childDna), nextSeed )

@@ -31,7 +31,7 @@ initialModel =
 
 target : String
 target =
-    "Genetic algorithm in Elm!"
+    "Genetic algorithm in Elm"
 
 
 target_ascii : List Int
@@ -78,19 +78,19 @@ randomOrganismGenerator =
         |> Random.list (String.length target)
         |> Random.map
             (\asciiCodes ->
-                Organism asciiCodes Nothing
+                Organism asciiCodes <| scoreOrganism asciiCodes
             )
 
 
-scoreOrganism : Organism -> Float
-scoreOrganism organism =
+scoreOrganism : Dna -> Float
+scoreOrganism dna =
     target_ascii
         |> Array.fromList
         |> Array.foldl
             (\asciiCode ( score, index ) ->
                 let
                     organismAscii_ =
-                        organism.dna
+                        dna
                             |> Array.fromList
                             |> Array.get index
                 in
@@ -155,12 +155,7 @@ isDoneEvolving bestOrganism_ numGenerations =
                 _ =
                     Debug.log "" (List.map Char.fromCode bestOrganism.dna |> String.fromList)
             in
-                case bestOrganism.score of
-                    Just num ->
-                        num == 0 || numGenerations >= max_iterations
-
-                    _ ->
-                        False
+                bestOrganism.score == 0 || numGenerations >= max_iterations
 
         _ ->
             False
