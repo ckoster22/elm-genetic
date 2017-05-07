@@ -25,10 +25,6 @@ type Msg
     = Begin
 
 
-type alias Flags =
-    { currentTimeInMillis : Int }
-
-
 init : Decode.Value -> ( Model, Cmd Msg )
 init json =
     let
