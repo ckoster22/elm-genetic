@@ -48,23 +48,28 @@ type alias Options =
 
 
 {-| Kicks off the algorithm
+TODO: examples for callbacks
+TODO: explain the return value
 -}
-evolveSolution : Options -> ( Population, Organism, Seed )
+evolveSolution : Options -> ( Population, Dna, Float, Seed )
 evolveSolution options =
     let
         ( initialPopulation_, seed2 ) =
             generateInitialPopulation options
-    in
-        case initialPopulation_ of
-            Just initialPopulation ->
-                let
-                    ( nextPopulation, bestOrganism, seed3 ) =
-                        executeStep options initialPopulation seed2
-                in
-                    recursivelyEvolve 0 options initialPopulation bestOrganism seed3
 
-            Nothing ->
-                Debug.crash "Unable to produce random non-empty list"
+        ( finalGeneration, bestOrganism, seed3 ) =
+            case initialPopulation_ of
+                Just initialPopulation ->
+                    let
+                        ( nextPopulation, bestOrganism, seed3 ) =
+                            executeStep options initialPopulation seed2
+                    in
+                        recursivelyEvolve 0 options initialPopulation bestOrganism seed3
+
+                Nothing ->
+                    Debug.crash "Unable to produce random non-empty list"
+    in
+        ( finalGeneration, bestOrganism.dna, bestOrganism.score, seed3 )
 
 
 recursivelyEvolve : Int -> Options -> Population -> Organism -> Seed -> ( Population, Organism, Seed )
