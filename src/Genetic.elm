@@ -123,55 +123,6 @@ generateNextGeneration options currPopulation seed =
         ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
 
 
-
--- takeFromNonemptyList : Int -> Nonempty a -> Nonempty a
--- takeFromNonemptyList num nonemptyList =
---     let
---         initialList =
---             NonemptyList.get 0 nonemptyList
---                 |> NonemptyList.fromElement
---     in
---         nonemptyList
---             |> NonemptyList.foldl
---                 (\item ( accList, index ) ->
---                     if index == 0 then
---                         ( accList, index + 1 )
---                     else
---                         ( NonemptyList.cons (NonemptyList.get index nonemptyList) accList, index + 1 )
---                 )
---                 ( initialList, 0 )
---             |> Tuple.first
--- produceFamily : Options -> Organism -> Organism -> Seed -> ( Nonempty Organism, Seed )
--- produceFamily options parent1 parent2 seed =
---     let
---         ( child1, seed2 ) =
---             produceChild options parent1 parent2 seed
---         ( child2, seed3 ) =
---             produceChild options parent1 parent2 seed2
---         ( child3, seed4 ) =
---             produceChild options parent1 parent2 seed3
---         bestParent =
---             if parent1.score < parent2.score then
---                 NonemptyList.fromElement parent1
---             else
---                 NonemptyList.fromElement parent2
---         family =
---             child1
---                 |> NonemptyList.append child2
---                 |> NonemptyList.append child3
---                 |> NonemptyList.append bestParent
---     in
---         ( family, seed4 )
--- produceChild : Options -> Organism -> Organism -> Seed -> ( Nonempty Organism, Seed )
--- produceChild options parent1 parent2 seed =
---     let
---         ( childDna, nextSeed ) =
---             options.crossoverDnas parent1.dna parent2.dna seed
---                 |> options.mutateDna
---     in
---         ( NonemptyList.fromElement <| Organism childDna (options.scoreOrganism childDna), nextSeed )
-
-
 produceFamily : Options -> Organism -> Organism -> Seed -> ( List Organism, Seed )
 produceFamily options parent1 parent2 seed =
     let
