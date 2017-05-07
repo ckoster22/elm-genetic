@@ -67,7 +67,7 @@ update msg model =
 
 target : String
 target =
-    "Genetic algorithm in Elm"
+    "Hello world"
 
 
 target_ascii : List Int
@@ -86,6 +86,13 @@ max_iterations =
     3000
 
 
+randomDnaGenerator : Generator Dna
+randomDnaGenerator =
+    Random.int 1 53
+        |> Random.map asciiCodeMapper
+        |> Random.list (String.length target)
+
+
 asciiCodeMapper : Int -> Int
 asciiCodeMapper code =
     if code < 27 then
@@ -94,13 +101,6 @@ asciiCodeMapper code =
         code + 70
     else
         32
-
-
-randomDnaGenerator : Generator Dna
-randomDnaGenerator =
-    Random.int 1 53
-        |> Random.map asciiCodeMapper
-        |> Random.list (String.length target)
 
 
 scoreOrganism : Dna -> Float
