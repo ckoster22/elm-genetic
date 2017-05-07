@@ -107,6 +107,15 @@ generateNextGeneration options currPopulation seed =
                 |> List.take half_population_size
 
         ( nextGeneration, nextSeed ) =
+            reproduceBestOrganisms options bestHalfOfPopulation seed
+    in
+        ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
+
+
+reproduceBestOrganisms : Options -> List Organism -> Seed -> ( List Organism, Seed )
+reproduceBestOrganisms options bestHalfOfPopulation seed =
+    let
+        ( nextGeneration, _, nextSeed3 ) =
             bestHalfOfPopulation
                 |> List.foldl
                     (\currOrganism ( organisms, prevOrganism_, nextSeed ) ->
@@ -122,11 +131,8 @@ generateNextGeneration options currPopulation seed =
                                 ( organisms, Just currOrganism, nextSeed )
                     )
                     ( [], Nothing, seed )
-                |> (\( families, _, nextSeed ) ->
-                        ( families, nextSeed )
-                   )
     in
-        ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
+        ( nextGeneration, nextSeed3 )
 
 
 produceFamily : Options -> Organism -> Organism -> Seed -> ( List Organism, Seed )
