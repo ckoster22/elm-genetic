@@ -157,7 +157,7 @@ mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
 mutateDna ( dna, seed ) =
     let
         ( randomIndex, seed2 ) =
-            Random.step (Random.int 0 (String.length target)) seed
+            Random.step (Random.int 0 (String.length target - 1)) seed
 
         ( randomAsciiCode, seed3 ) =
             Random.int 1 53
@@ -183,7 +183,7 @@ Again, keep in mind that new random seeds need to be tracked and returned.
 
 ### Define a function to stop the recursion
 
-The algorithm will run forever if you let it. In order to prevent that on every step of execution the algorithm will call your `isDoneEvolving` function with the dna of the best potential solution so far, the score that dna produced, and the current generation number.
+The algorithm will run forever if you let it. To prevent this, on every step of execution the algorithm will call your `isDoneEvolving` function with the dna of the best potential solution so far, the score that dna produced, and the current generation number.
 
 With this information we can determine whether the given solution is good enough or if the algorithm has run long enough. For this example the algorithm stops when the score is 0 (there is no difference between the ASCII codes of our solution and the target string) or we exceed an arbitrary number of iterations.
 

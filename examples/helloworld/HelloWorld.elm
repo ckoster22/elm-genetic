@@ -146,7 +146,7 @@ mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
 mutateDna ( dna, seed ) =
     let
         ( randomIndex, seed2 ) =
-            Random.step (Random.int 0 (String.length target)) seed
+            Random.step (Random.int 0 (String.length target - 1)) seed
 
         ( randomAsciiCode, seed3 ) =
             Random.int 1 53
