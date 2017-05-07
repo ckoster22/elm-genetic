@@ -1,5 +1,12 @@
 module Genetic exposing (evolveSolution, Dna)
 
+{-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
+invoked with the appropriate callbacks it will attempt to find an optimal solution.
+
+@docs evolveSolution, Dna
+
+-}
+
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import Random exposing (Generator, Seed)
 
@@ -14,6 +21,8 @@ half_population_size =
     round <| toFloat population_size / 2
 
 
+{-| Hoping to not expose this..
+-}
 type alias Dna =
     List Int
 
@@ -38,6 +47,8 @@ type alias Options =
     }
 
 
+{-| Kicks off the algorithm
+-}
 evolveSolution : Options -> ( Population, Organism, Seed )
 evolveSolution options =
     let
