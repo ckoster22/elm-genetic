@@ -5,11 +5,12 @@ import Random exposing (Generator, Seed)
 import Char
 import Array
 import Task
+import Json.Decode as Decode exposing (decodeValue, field, int)
 
 
-main : Program Never Model Msg
+main : Program Decode.Value Model Msg
 main =
-    Platform.program
+    Platform.programWithFlags
         { init = init
         , update = update
         , subscriptions = (\_ -> Sub.none)
@@ -17,21 +18,33 @@ main =
 
 
 type alias Model =
-    {}
+    { initialSeed : Int }
 
 
 type Msg
     = Begin
 
 
-init : ( Model, Cmd Msg )
-init =
+type alias Flags =
+    { currentTimeInMillis : Int }
+
+
+init : Decode.Value -> ( Model, Cmd Msg )
+init json =
     let
+        initialSeed =
+            case (decodeValue (field "currentTimeInMillis" int) json) of
+                Ok seed ->
+                    seed
+
+                Err reason ->
+                    Debug.crash <| "Unable to decode program arguments: " ++ reason
+
         startThingsMsg =
             Task.succeed Nothing
                 |> Task.perform (\_ -> Begin)
     in
-        {} ! [ startThingsMsg ]
+        { initialSeed = initialSeed } ! [ startThingsMsg ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -46,7 +59,7 @@ update msg model =
                         , crossoverDnas = crossoverDnas
                         , mutateDna = mutateDna
                         , isDoneEvolving = isDoneEvolving
-                        , initialSeed = Random.initialSeed 0
+                        , initialSeed = Random.initialSeed model.initialSeed
                         }
             in
                 model ! []
