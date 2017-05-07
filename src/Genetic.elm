@@ -1,4 +1,4 @@
-module Genetic exposing (evolveSolution, Options, Organism, Dna)
+module Genetic exposing (evolveSolution, Organism, Dna)
 
 import Random exposing (Generator, Seed)
 

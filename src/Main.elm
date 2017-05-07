@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Html exposing (Html, text)
-import Genetic exposing (evolveSolution, Options, Organism, Dna)
+import Genetic exposing (evolveSolution, Organism, Dna)
 import Random exposing (Generator, Seed)
 import Char
 import Array
@@ -45,19 +45,20 @@ crossover_split_index =
     floor ((toFloat (String.length target)) / 2)
 
 
+max_iterations : Int
 max_iterations =
     3000
 
 
-helloWorldOptions : Options
-helloWorldOptions =
-    { randomOrganismGenerator = randomOrganismGenerator
-    , scoreOrganism = scoreOrganism
-    , crossoverDnas = crossoverDnas
-    , mutateDna = mutateDna
-    , isDoneEvolving = isDoneEvolving
-    , initialSeed = Random.initialSeed 0
-    }
+_ =
+    evolveSolution
+        { randomOrganismGenerator = randomOrganismGenerator
+        , scoreOrganism = scoreOrganism
+        , crossoverDnas = crossoverDnas
+        , mutateDna = mutateDna
+        , isDoneEvolving = isDoneEvolving
+        , initialSeed = Random.initialSeed 0
+        }
 
 
 asciiCodeMapper : Int -> Int
@@ -148,10 +149,6 @@ mutateDna ( dna, seed ) =
 
 isDoneEvolving : Maybe Organism -> Int -> Bool
 isDoneEvolving bestOrganism_ numGenerations =
-    -- let
-    --     _ =
-    --         Debug.log "gen" numGenerations
-    -- in
     case bestOrganism_ of
         Just bestOrganism ->
             let
@@ -167,10 +164,6 @@ isDoneEvolving bestOrganism_ numGenerations =
 
         _ ->
             False
-
-
-_ =
-    evolveSolution helloWorldOptions
 
 
 view : Model -> Html Msg
