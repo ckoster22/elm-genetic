@@ -1,4 +1,4 @@
-module Main exposing (main)
+module HelloWorld exposing (main)
 
 import Genetic exposing (evolveSolution, Dna)
 import Random exposing (Generator, Seed)
