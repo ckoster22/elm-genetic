@@ -1,18 +1,18 @@
 module Main exposing (main)
 
-import Html exposing (Html, text)
 import Genetic exposing (evolveSolution, Dna)
 import Random exposing (Generator, Seed)
 import Char
 import Array
+import Task
 
 
 main : Program Never Model Msg
 main =
-    Html.beginnerProgram
-        { model = initialModel
-        , view = view
+    Platform.program
+        { init = init
         , update = update
+        , subscriptions = (\_ -> Sub.none)
         }
 
 
@@ -21,12 +21,35 @@ type alias Model =
 
 
 type Msg
-    = NoOp
+    = Begin
 
 
-initialModel : Model
-initialModel =
-    {}
+init : ( Model, Cmd Msg )
+init =
+    let
+        startThingsMsg =
+            Task.succeed Nothing
+                |> Task.perform (\_ -> Begin)
+    in
+        {} ! [ startThingsMsg ]
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        Begin ->
+            let
+                _ =
+                    evolveSolution
+                        { randomDnaGenerator = randomDnaGenerator
+                        , scoreOrganism = scoreOrganism
+                        , crossoverDnas = crossoverDnas
+                        , mutateDna = mutateDna
+                        , isDoneEvolving = isDoneEvolving
+                        , initialSeed = Random.initialSeed 0
+                        }
+            in
+                model ! []
 
 
 target : String
@@ -48,17 +71,6 @@ crossover_split_index =
 max_iterations : Int
 max_iterations =
     3000
-
-
-_ =
-    evolveSolution
-        { randomDnaGenerator = randomDnaGenerator
-        , scoreOrganism = scoreOrganism
-        , crossoverDnas = crossoverDnas
-        , mutateDna = mutateDna
-        , isDoneEvolving = isDoneEvolving
-        , initialSeed = Random.initialSeed 0
-        }
 
 
 asciiCodeMapper : Int -> Int
@@ -150,13 +162,3 @@ isDoneEvolving bestDna bestDnaScore numGenerations =
             Debug.log "" (List.map Char.fromCode bestDna |> String.fromList)
     in
         bestDnaScore == 0 || numGenerations >= max_iterations
-
-
-view : Model -> Html Msg
-view model =
-    text "Hello world"
-
-
-update : Msg -> Model -> Model
-update msg model =
-    model
