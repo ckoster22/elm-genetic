@@ -1,7 +1,7 @@
 module Main exposing (main)
 
 import Html exposing (Html, text)
-import Genetic exposing (evolveSolution, Organism, Dna)
+import Genetic exposing (evolveSolution, Dna)
 import Random exposing (Generator, Seed)
 import Char
 import Array
@@ -52,7 +52,7 @@ max_iterations =
 
 _ =
     evolveSolution
-        { randomOrganismGenerator = randomOrganismGenerator
+        { randomDnaGenerator = randomDnaGenerator
         , scoreOrganism = scoreOrganism
         , crossoverDnas = crossoverDnas
         , mutateDna = mutateDna
@@ -71,15 +71,11 @@ asciiCodeMapper code =
         32
 
 
-randomOrganismGenerator : Generator Organism
-randomOrganismGenerator =
+randomDnaGenerator : Generator Dna
+randomDnaGenerator =
     Random.int 1 53
         |> Random.map asciiCodeMapper
         |> Random.list (String.length target)
-        |> Random.map
-            (\asciiCodes ->
-                Organism asciiCodes <| scoreOrganism asciiCodes
-            )
 
 
 scoreOrganism : Dna -> Float
@@ -147,13 +143,13 @@ mutateDna ( dna, seed ) =
         ( mutatedDna, seed3 )
 
 
-isDoneEvolving : Organism -> Int -> Bool
-isDoneEvolving bestOrganism numGenerations =
+isDoneEvolving : Dna -> Float -> Int -> Bool
+isDoneEvolving bestDna bestDnaScore numGenerations =
     let
         _ =
-            Debug.log "" (List.map Char.fromCode bestOrganism.dna |> String.fromList)
+            Debug.log "" (List.map Char.fromCode bestDna |> String.fromList)
     in
-        bestOrganism.score == 0 || numGenerations >= max_iterations
+        bestDnaScore == 0 || numGenerations >= max_iterations
 
 
 view : Model -> Html Msg

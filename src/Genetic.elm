@@ -1,4 +1,4 @@
-module Genetic exposing (evolveSolution, Organism, Dna)
+module Genetic exposing (evolveSolution, Dna)
 
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import Random exposing (Generator, Seed)
@@ -29,11 +29,11 @@ type alias Population =
 
 
 type alias Options =
-    { randomOrganismGenerator : Generator Organism
+    { randomDnaGenerator : Generator Dna
     , scoreOrganism : Dna -> Float
     , crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
     , mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-    , isDoneEvolving : Organism -> Int -> Bool
+    , isDoneEvolving : Dna -> Float -> Int -> Bool
     , initialSeed : Seed
     }
 
@@ -42,7 +42,7 @@ evolveSolution : Options -> ( Population, Organism, Seed )
 evolveSolution options =
     let
         ( initialPopulation_, seed2 ) =
-            generateInitialPopulation options.randomOrganismGenerator options.initialSeed
+            generateInitialPopulation options
     in
         case initialPopulation_ of
             Just initialPopulation ->
@@ -58,7 +58,7 @@ evolveSolution options =
 
 recursivelyEvolve : Int -> Options -> Population -> Organism -> Seed -> ( Population, Organism, Seed )
 recursivelyEvolve numGenerations options population bestOrganism seed =
-    if (options.isDoneEvolving bestOrganism numGenerations) then
+    if (options.isDoneEvolving bestOrganism.dna bestOrganism.score numGenerations) then
         ( population, bestOrganism, seed )
     else
         let
@@ -82,11 +82,17 @@ executeStep options population seed =
         ( nextPopulation, bestSolution, nextSeed )
 
 
-generateInitialPopulation : Generator Organism -> Seed -> ( Maybe (Nonempty Organism), Seed )
-generateInitialPopulation orgGenerator seed =
+generateInitialPopulation : Options -> ( Maybe (Nonempty Organism), Seed )
+generateInitialPopulation options =
     let
         ( randomOrganisms, nextSeed ) =
-            Random.step (Random.list population_size orgGenerator) seed
+            options.randomDnaGenerator
+                |> Random.map
+                    (\asciiCodes ->
+                        Organism asciiCodes <| options.scoreOrganism asciiCodes
+                    )
+                |> Random.list population_size
+                |> (\generator -> Random.step generator options.initialSeed)
     in
         ( NonemptyList.fromList randomOrganisms, nextSeed )
 
