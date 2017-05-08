@@ -64,7 +64,7 @@ evolveSolution options =
                         ( nextPopulation, bestOrganism, seed3 ) =
                             executeStep options initialPopulation seed2
                     in
-                        recursivelyEvolve 0 options initialPopulation bestOrganism seed3
+                        recursivelyEvolve 0 options nextPopulation bestOrganism seed3
 
                 Nothing ->
                     Debug.crash "Unable to produce random non-empty list"
