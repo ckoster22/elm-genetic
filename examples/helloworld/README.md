@@ -76,7 +76,7 @@ scoreOrganism dna =
 
 If you can't answer one or more of the above questions then a genetic algorithm is not appropriate for the problem you're trying to solve.
 
-If so, continue on..
+If you can answer the above questions, continue on..
 
 ## Provide a few more helper functions to the algorithm
 
