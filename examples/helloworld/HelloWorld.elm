@@ -1,6 +1,6 @@
 module HelloWorld exposing (main)
 
-import Genetic exposing (evolveSolution, Dna)
+import Genetic exposing (evolveSolution)
 import Random exposing (Generator, Seed)
 import Char
 import Array
@@ -59,6 +59,10 @@ update msg model =
                         }
             in
                 model ! []
+
+
+type alias Dna =
+    List Int
 
 
 target : String

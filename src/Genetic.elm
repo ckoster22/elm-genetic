@@ -1,9 +1,9 @@
-module Genetic exposing (evolveSolution, Dna)
+module Genetic exposing (evolveSolution)
 
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
-@docs evolveSolution, Dna
+@docs evolveSolution
 
 -}
 
@@ -21,28 +21,22 @@ half_population_size =
     round <| toFloat population_size / 2
 
 
-{-| Hoping to not expose this..
--}
-type alias Dna =
-    List Int
-
-
-type alias Organism =
-    { dna : Dna
+type alias Organism dna =
+    { dna : dna
     , score : Float
     }
 
 
-type alias Population =
-    Nonempty Organism
+type alias Population dna =
+    Nonempty (Organism dna)
 
 
-type alias Options =
-    { randomDnaGenerator : Generator Dna
-    , scoreOrganism : Dna -> Float
-    , crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
-    , mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-    , isDoneEvolving : Dna -> Float -> Int -> Bool
+type alias Options dna =
+    { randomDnaGenerator : Generator dna
+    , scoreOrganism : dna -> Float
+    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
+    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
+    , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     }
 
@@ -51,7 +45,7 @@ type alias Options =
 TODO: examples for callbacks
 TODO: explain the return value
 -}
-evolveSolution : Options -> ( Population, Dna, Float, Seed )
+evolveSolution : Options dna -> ( Population dna, dna, Float, Seed )
 evolveSolution options =
     let
         ( initialPopulation_, seed2 ) =
@@ -64,7 +58,7 @@ evolveSolution options =
                         ( nextPopulation, bestOrganism, seed3 ) =
                             executeStep options initialPopulation seed2
                     in
-                        recursivelyEvolve 0 options initialPopulation bestOrganism seed3
+                        recursivelyEvolve 0 options nextPopulation bestOrganism seed3
 
                 Nothing ->
                     Debug.crash "Unable to produce random non-empty list"
@@ -72,7 +66,7 @@ evolveSolution options =
         ( finalGeneration, bestOrganism.dna, bestOrganism.score, seed3 )
 
 
-recursivelyEvolve : Int -> Options -> Population -> Organism -> Seed -> ( Population, Organism, Seed )
+recursivelyEvolve : Int -> Options dna -> Population dna -> Organism dna -> Seed -> ( Population dna, Organism dna, Seed )
 recursivelyEvolve numGenerations options population bestOrganism seed =
     if (options.isDoneEvolving bestOrganism.dna bestOrganism.score numGenerations) then
         ( population, bestOrganism, seed )
@@ -84,7 +78,7 @@ recursivelyEvolve numGenerations options population bestOrganism seed =
             recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism nextSeed
 
 
-executeStep : Options -> Population -> Seed -> ( Population, Organism, Seed )
+executeStep : Options dna -> Population dna -> Seed -> ( Population dna, Organism dna, Seed )
 executeStep options population seed =
     let
         bestSolution =
@@ -98,7 +92,7 @@ executeStep options population seed =
         ( nextPopulation, bestSolution, nextSeed )
 
 
-generateInitialPopulation : Options -> ( Maybe (Nonempty Organism), Seed )
+generateInitialPopulation : Options dna -> ( Maybe (Nonempty (Organism dna)), Seed )
 generateInitialPopulation options =
     let
         ( randomOrganisms, nextSeed ) =
@@ -113,7 +107,7 @@ generateInitialPopulation options =
         ( NonemptyList.fromList randomOrganisms, nextSeed )
 
 
-generateNextGeneration : Options -> Population -> Seed -> ( Population, Seed )
+generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
 generateNextGeneration options currPopulation seed =
     let
         bestHalfOfPopulation =
@@ -128,7 +122,7 @@ generateNextGeneration options currPopulation seed =
         ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
 
 
-reproduceBestOrganisms : Options -> List Organism -> Seed -> ( List Organism, Seed )
+reproduceBestOrganisms : Options dna -> List (Organism dna) -> Seed -> ( List (Organism dna), Seed )
 reproduceBestOrganisms options bestHalfOfPopulation seed =
     let
         ( nextGeneration, _, nextSeed3 ) =
@@ -151,7 +145,7 @@ reproduceBestOrganisms options bestHalfOfPopulation seed =
         ( nextGeneration, nextSeed3 )
 
 
-produceFamily : Options -> Organism -> Organism -> Seed -> ( List Organism, Seed )
+produceFamily : Options dna -> Organism dna -> Organism dna -> Seed -> ( List (Organism dna), Seed )
 produceFamily options parent1 parent2 seed =
     let
         ( child1, seed2 ) =
@@ -172,7 +166,7 @@ produceFamily options parent1 parent2 seed =
         ( [ child1, child2, child3, bestParent ], seed4 )
 
 
-produceChild : Options -> Organism -> Organism -> Seed -> ( Organism, Seed )
+produceChild : Options dna -> Organism dna -> Organism dna -> Seed -> ( Organism dna, Seed )
 produceChild options parent1 parent2 seed =
     let
         ( childDna, nextSeed ) =
