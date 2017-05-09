@@ -45,7 +45,15 @@ type alias Options dna =
 TODO: examples for callbacks
 TODO: explain the return value
 -}
-evolveSolution : Options dna -> ( Population dna, dna, Float, Seed )
+evolveSolution :
+    { randomDnaGenerator : Generator dna
+    , scoreOrganism : dna -> Float
+    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
+    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
+    , isDoneEvolving : dna -> Float -> Int -> Bool
+    , initialSeed : Seed
+    }
+    -> ( Population dna, dna, Float, Seed )
 evolveSolution options =
     let
         ( initialPopulation_, seed2 ) =
