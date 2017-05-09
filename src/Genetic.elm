@@ -3,7 +3,7 @@ module Genetic exposing (evolveSolution, Method(..))
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
-@docs evolveSolution, Method
+@docs Method, evolveSolution
 
 -}
 
@@ -21,7 +21,11 @@ half_population_size =
     round <| toFloat population_size / 2
 
 
-{-| x
+{-| For simple use cases the genetic algorithm will be doing one of two things:
+  * Maximizing a score
+  * Minimizing a penalty or cost
+
+Your `evaluateOrganism` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
 -}
 type Method
     = MaximizeScore
@@ -49,9 +53,32 @@ type alias Options dna =
     }
 
 
-{-| Kicks off the algorithm
-TODO: examples for callbacks
-TODO: explain the return value
+{-| Kicks off the genetic algorithm.
+
+There are a handful of callbacks required because the algorithm needs the following information:
+  * How to generate a random solution
+  * Given a potential solution, how should it be evaluated?
+  * How to breed two solutions
+  * Is the current best solution good enough?
+  * An initial random seed
+  * Are we maximizing a score or minimizing a penalty?
+
+These details are captured in the following record:
+
+``` elm
+{ randomDnaGenerator : Generator dna
+, evaluateOrganism : dna -> Float
+, crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
+, mutateDna : ( dna, Seed ) -> ( dna, Seed )
+, isDoneEvolving : dna -> Float -> Int -> Bool
+, initialSeed : Seed
+, method : Method
+}
+```
+
+The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
+
+When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateOrganism`, and the next random `Seed` to be used in subsequent `Random` calls.
 -}
 evolveSolution :
     { randomDnaGenerator : Generator dna
