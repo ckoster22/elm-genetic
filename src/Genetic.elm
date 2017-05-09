@@ -8,6 +8,7 @@ invoked with the appropriate callbacks it will attempt to find an optimal soluti
 -}
 
 import List.Nonempty as NonemptyList exposing (Nonempty)
+import NonemptyHelper
 import Random exposing (Generator, Seed)
 
 
@@ -92,20 +93,15 @@ evolveSolution :
     -> ( Population dna, dna, Float, Seed )
 evolveSolution options =
     let
-        ( initialPopulation_, seed2 ) =
+        ( initialPopulation, seed2 ) =
             generateInitialPopulation options
 
         ( finalGeneration, bestOrganism, seed3 ) =
-            case initialPopulation_ of
-                Just initialPopulation ->
-                    let
-                        ( nextPopulation, bestOrganism, seed3 ) =
-                            executeStep options initialPopulation seed2
-                    in
-                        recursivelyEvolve 0 options nextPopulation bestOrganism seed3
-
-                Nothing ->
-                    Debug.crash "Unable to produce random non-empty list"
+            let
+                ( nextPopulation, bestOrganism, seed3 ) =
+                    executeStep options initialPopulation seed2
+            in
+                recursivelyEvolve 0 options nextPopulation bestOrganism seed3
     in
         ( finalGeneration, bestOrganism.dna, bestOrganism.points, seed3 )
 
@@ -144,19 +140,14 @@ executeStep options population seed =
         ( nextPopulation, bestSolution, nextSeed )
 
 
-generateInitialPopulation : Options dna -> ( Maybe (Nonempty (Organism dna)), Seed )
+generateInitialPopulation : Options dna -> ( Nonempty (Organism dna), Seed )
 generateInitialPopulation options =
-    let
-        ( randomOrganisms, nextSeed ) =
-            options.randomDnaGenerator
-                |> Random.map
-                    (\asciiCodes ->
-                        Organism asciiCodes <| options.evaluateOrganism asciiCodes
-                    )
-                |> Random.list population_size
-                |> (\generator -> Random.step generator options.initialSeed)
-    in
-        ( NonemptyList.fromList randomOrganisms, nextSeed )
+    options.randomDnaGenerator
+        |> Random.map
+            (\asciiCodes ->
+                Organism asciiCodes <| options.evaluateOrganism asciiCodes
+            )
+        |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
 
 
 generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
