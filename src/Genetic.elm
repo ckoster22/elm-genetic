@@ -1,9 +1,9 @@
-module Genetic exposing (evolveSolution)
+module Genetic exposing (evolveSolution, Method(..))
 
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
-@docs evolveSolution
+@docs evolveSolution, Method
 
 -}
 
@@ -21,9 +21,16 @@ half_population_size =
     round <| toFloat population_size / 2
 
 
+{-| x
+-}
+type Method
+    = MaximizeScore
+    | MinimizePenalty
+
+
 type alias Organism dna =
     { dna : dna
-    , score : Float
+    , points : Float
     }
 
 
@@ -33,11 +40,12 @@ type alias Population dna =
 
 type alias Options dna =
     { randomDnaGenerator : Generator dna
-    , scoreOrganism : dna -> Float
+    , evaluateOrganism : dna -> Float
     , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
     , mutateDna : ( dna, Seed ) -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
+    , method : Method
     }
 
 
@@ -47,11 +55,12 @@ TODO: explain the return value
 -}
 evolveSolution :
     { randomDnaGenerator : Generator dna
-    , scoreOrganism : dna -> Float
+    , evaluateOrganism : dna -> Float
     , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
     , mutateDna : ( dna, Seed ) -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
+    , method : Method
     }
     -> ( Population dna, dna, Float, Seed )
 evolveSolution options =
@@ -71,12 +80,12 @@ evolveSolution options =
                 Nothing ->
                     Debug.crash "Unable to produce random non-empty list"
     in
-        ( finalGeneration, bestOrganism.dna, bestOrganism.score, seed3 )
+        ( finalGeneration, bestOrganism.dna, bestOrganism.points, seed3 )
 
 
 recursivelyEvolve : Int -> Options dna -> Population dna -> Organism dna -> Seed -> ( Population dna, Organism dna, Seed )
 recursivelyEvolve numGenerations options population bestOrganism seed =
-    if (options.isDoneEvolving bestOrganism.dna bestOrganism.score numGenerations) then
+    if (options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations) then
         ( population, bestOrganism, seed )
     else
         let
@@ -89,10 +98,18 @@ recursivelyEvolve numGenerations options population bestOrganism seed =
 executeStep : Options dna -> Population dna -> Seed -> ( Population dna, Organism dna, Seed )
 executeStep options population seed =
     let
+        sortedPopulation =
+            NonemptyList.sortBy .points population
+
         bestSolution =
-            population
-                |> NonemptyList.sortBy .score
-                |> NonemptyList.head
+            case options.method of
+                MaximizeScore ->
+                    sortedPopulation
+                        |> NonemptyList.reverse
+                        |> NonemptyList.head
+
+                MinimizePenalty ->
+                    NonemptyList.head sortedPopulation
 
         ( nextPopulation, nextSeed ) =
             generateNextGeneration options population seed
@@ -107,7 +124,7 @@ generateInitialPopulation options =
             options.randomDnaGenerator
                 |> Random.map
                     (\asciiCodes ->
-                        Organism asciiCodes <| options.scoreOrganism asciiCodes
+                        Organism asciiCodes <| options.evaluateOrganism asciiCodes
                     )
                 |> Random.list population_size
                 |> (\generator -> Random.step generator options.initialSeed)
@@ -118,11 +135,18 @@ generateInitialPopulation options =
 generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
 generateNextGeneration options currPopulation seed =
     let
-        bestHalfOfPopulation =
+        sortedPopulation =
             currPopulation
-                |> NonemptyList.sortBy .score
+                |> NonemptyList.sortBy .points
                 |> NonemptyList.toList
-                |> List.take half_population_size
+
+        bestHalfOfPopulation =
+            case options.method of
+                MaximizeScore ->
+                    List.drop half_population_size sortedPopulation
+
+                MinimizePenalty ->
+                    List.take half_population_size sortedPopulation
 
         ( nextGeneration, nextSeed ) =
             reproduceBestOrganisms options bestHalfOfPopulation seed
@@ -166,10 +190,18 @@ produceFamily options parent1 parent2 seed =
             produceChild options parent1 parent2 seed3
 
         bestParent =
-            if parent1.score < parent2.score then
-                parent1
-            else
-                parent2
+            case options.method of
+                MaximizeScore ->
+                    if parent1.points > parent2.points then
+                        parent1
+                    else
+                        parent2
+
+                MinimizePenalty ->
+                    if parent1.points < parent2.points then
+                        parent1
+                    else
+                        parent2
     in
         ( [ child1, child2, child3, bestParent ], seed4 )
 
@@ -181,4 +213,4 @@ produceChild options parent1 parent2 seed =
             options.crossoverDnas parent1.dna parent2.dna seed
                 |> options.mutateDna
     in
-        ( Organism childDna (options.scoreOrganism childDna), nextSeed )
+        ( Organism childDna (options.evaluateOrganism childDna), nextSeed )
