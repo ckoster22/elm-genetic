@@ -51,7 +51,7 @@ update msg model =
                 _ =
                     evolveSolution
                         { randomDnaGenerator = randomDnaGenerator
-                        , evaluateOrganism = evaluateOrganism
+                        , evaluateSolution = evaluateSolution
                         , crossoverDnas = crossoverDnas
                         , mutateDna = mutateDna
                         , isDoneEvolving = isDoneEvolving
@@ -104,8 +104,8 @@ asciiCodeMapper code =
         32
 
 
-evaluateOrganism : Dna -> Float
-evaluateOrganism dna =
+evaluateSolution : Dna -> Float
+evaluateSolution dna =
     target_ascii
         |> Array.fromList
         |> Array.foldl

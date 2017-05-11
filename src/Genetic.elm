@@ -1,9 +1,13 @@
-module Genetic exposing (evolveSolution, Method(..))
+module Genetic exposing (evolveSolution, executeStep, generateInitialPopulation, Method(..))
 
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
 @docs Method, evolveSolution
+
+# Advanced usage
+Sometimes you may want more control than to run everything all at once. Perhaps you want to perform some intermediate asynchronous processing such as rendering DOM or performing a side-effect. If so, the following functions are exposed for you to take the algorithm into your own hands.
+@docs executeStep, generateInitialPopulation
 
 -}
 
@@ -26,7 +30,7 @@ half_population_size =
   * Maximizing a score
   * Minimizing a penalty or cost
 
-Your `evaluateOrganism` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
+Your `evaluateSolution` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
 -}
 type Method
     = MaximizeScore
@@ -43,9 +47,13 @@ type alias Population dna =
     Nonempty (Organism dna)
 
 
+type Generation dna
+    = Generation (Nonempty (Organism dna))
+
+
 type alias Options dna =
     { randomDnaGenerator : Generator dna
-    , evaluateOrganism : dna -> Float
+    , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
     , mutateDna : Seed -> dna -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
@@ -68,7 +76,7 @@ These details are captured in the following record:
 
 ``` elm
 { randomDnaGenerator : Generator dna
-, evaluateOrganism : dna -> Float
+, evaluateSolution : dna -> Float
 , crossoverDnas : dna -> dna -> dna
 , mutateDna : Seed -> dna -> ( dna, Seed )
 , isDoneEvolving : dna -> Float -> Int -> Bool
@@ -79,31 +87,31 @@ These details are captured in the following record:
 
 The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
 
-When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateOrganism`, and the next random `Seed` to be used in subsequent `Random` calls.
+When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateSolution`, and the next random `Seed` to be used in subsequent `Random` calls.
 -}
 evolveSolution :
     { randomDnaGenerator : Generator dna
-    , evaluateOrganism : dna -> Float
+    , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
     , mutateDna : Seed -> dna -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
     }
-    -> ( Population dna, dna, Float, Seed )
+    -> ( Population dna, { dna : dna, points : Float }, Seed )
 evolveSolution options =
     let
-        ( initialPopulation, seed2 ) =
+        ( initialGeneration, seed2 ) =
             generateInitialPopulation options
 
         ( finalGeneration, bestOrganism, seed3 ) =
             let
                 ( nextPopulation, bestOrganism, seed3 ) =
-                    executeStep options initialPopulation seed2
+                    executeStep options initialGeneration seed2
             in
                 recursivelyEvolve 0 options nextPopulation bestOrganism seed3
     in
-        ( finalGeneration, bestOrganism.dna, bestOrganism.points, seed3 )
+        ( finalGeneration, bestOrganism, seed3 )
 
 
 recursivelyEvolve : Int -> Options dna -> Population dna -> Organism dna -> Seed -> ( Population dna, Organism dna, Seed )
@@ -113,14 +121,30 @@ recursivelyEvolve numGenerations options population bestOrganism seed =
     else
         let
             ( nextPopulation, nextBestOrganism, nextSeed ) =
-                executeStep options population seed
+                executeStep options (Generation population) seed
         in
             recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism nextSeed
 
 
-executeStep : Options dna -> Population dna -> Seed -> ( Population dna, Organism dna, Seed )
-executeStep options population seed =
+{-| TODO
+-}
+executeStep :
+    { randomDnaGenerator : Generator dna
+    , evaluateSolution : dna -> Float
+    , crossoverDnas : dna -> dna -> dna
+    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , isDoneEvolving : dna -> Float -> Int -> Bool
+    , initialSeed : Seed
+    , method : Method
+    }
+    -> Generation dna
+    -> Seed
+    -> ( Population dna, { dna : dna, points : Float }, Seed )
+executeStep options generation seed =
     let
+        population =
+            getPopulationFromGeneration generation
+
         sortedPopulation =
             NonemptyList.sortBy .points population
 
@@ -140,14 +164,35 @@ executeStep options population seed =
         ( nextPopulation, bestSolution, nextSeed )
 
 
-generateInitialPopulation : Options dna -> ( Nonempty (Organism dna), Seed )
+getPopulationFromGeneration : Generation dna -> Population dna
+getPopulationFromGeneration generation =
+    case generation of
+        Generation dna ->
+            dna
+
+
+{-| TODO
+-}
+generateInitialPopulation :
+    { randomDnaGenerator : Generator dna
+    , evaluateSolution : dna -> Float
+    , crossoverDnas : dna -> dna -> dna
+    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , isDoneEvolving : dna -> Float -> Int -> Bool
+    , initialSeed : Seed
+    , method : Method
+    }
+    -> ( Generation dna, Seed )
 generateInitialPopulation options =
     options.randomDnaGenerator
         |> Random.map
             (\asciiCodes ->
-                Organism asciiCodes <| options.evaluateOrganism asciiCodes
+                Organism asciiCodes <| options.evaluateSolution asciiCodes
             )
         |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
+        |> (\( population, seed ) ->
+                ( Generation population, seed )
+           )
 
 
 generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
@@ -240,4 +285,4 @@ produceChild options parent1 parent2 seed =
             options.crossoverDnas dna1 dna2
                 |> options.mutateDna nextSeed
     in
-        ( Organism childDna (options.evaluateOrganism childDna), nextSeed2 )
+        ( Organism childDna (options.evaluateSolution childDna), nextSeed2 )

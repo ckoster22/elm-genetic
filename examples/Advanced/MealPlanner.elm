@@ -67,7 +67,7 @@ update msg model =
                 _ =
                     evolveSolution
                         { randomDnaGenerator = randomMealPlannerGenerator
-                        , evaluateOrganism = evaluateOrganism
+                        , evaluateSolution = evaluateMealPlan
                         , crossoverDnas = crossoverMealplans
                         , mutateDna = mutateMealplan
                         , isDoneEvolving = isDoneEvolving
@@ -106,8 +106,8 @@ isDoneEvolving mealPlan _ generations =
         generations >= 100
 
 
-evaluateOrganism : MealPlan -> Float
-evaluateOrganism mealPlan =
+evaluateMealPlan : MealPlan -> Float
+evaluateMealPlan mealPlan =
     let
         totalPenalty =
             0
