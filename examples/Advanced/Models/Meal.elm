@@ -1,525 +1,110 @@
-module Advanced.MealPlannerData exposing (..)
+module Advanced.Models.Meal
+    exposing
+        ( Meal
+        , randomMealGenerator
+        , getRandomMeal
+        , getBreakfastPenaltyFor
+        , getLunchPenaltyFor
+        , getDinnerPenaltyFor
+        )
 
-import Dict exposing (Dict)
-import Advanced.Models.MealPlannerModel exposing (Food, Recipe, MealType(..))
+import Random exposing (Generator, Seed)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 
 
-allFood : Dict String Food
-allFood =
-    Dict.fromList
-        [ ( "Cereal"
-          , { name = "Cereal"
-            , perPackage = 1
-            , unit = "box"
-            , cost = 3.5
-            }
-          )
-        , ( "Sliced American cheese"
-          , { name = "Sliced American cheese"
-            , perPackage = 24
-            , unit = "slice"
-            , cost = 3.79
-            }
-          )
-        , ( "Sliced provolone"
-          , { name = "Sliced provolone"
-            , perPackage = 10
-            , unit = "slice"
-            , cost = 2.99
-            }
-          )
-        , ( "Milk"
-          , { name = "Milk"
-            , perPackage = 8
-            , unit = "cup"
-            , cost = 2.29
-            }
-          )
-        , ( "Feta cheese"
-          , { name = "Feta cheese"
-            , perPackage = 4
-            , unit = "ounce"
-            , cost = 3.49
-            }
-          )
-        , ( "Mexican taco cheese"
-          , { name = "Mexican taco cheese"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 2.59
-            }
-          )
-        , ( "Shredded mozzarella cheese"
-          , { name = "Shredded mozzarella cheese"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 2.69
-            }
-          )
-        , ( "Shredded cheddar cheese"
-          , { name = "Shredded cheddar cheese"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 2.59
-            }
-          )
-        , ( "Cottage cheese"
-          , { name = "Cottage cheese"
-            , perPackage = 12
-            , unit = "ounce"
-            , cost = 1.79
-            }
-          )
-        , ( "Greek yogurt"
-          , { name = "Greek yogurt"
-            , perPackage = 5.3
-            , unit = "ounce"
-            , cost = 1.19
-            }
-          )
-        , ( "Green pepper"
-          , { name = "Green pepper"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.5
-            }
-          )
-        , ( "Red pepper"
-          , { name = "Red pepper"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.5
-            }
-          )
-        , ( "White onion"
-          , { name = "White onion"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.77
-            }
-          )
-        , ( "Red onion"
-          , { name = "Red onion"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.16
-            }
-          )
-        , ( "Shredded lettuce"
-          , { name = "Shredded lettuce"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 1.99
-            }
-          )
-        , ( "Lettuce"
-          , { name = "Lettuce"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 2.49
-            }
-          )
-        , ( "Green onion"
-          , { name = "Green onion"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.99
-            }
-          )
-        , ( "Avocado"
-          , { name = "Avocado"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.5
-            }
-          )
-        , ( "Asparagus"
-          , { name = "Asparagus"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 3.69
-            }
-          )
-        , ( "Tomato"
-          , { name = "Tomato"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.35
-            }
-          )
-        , ( "Cucumber"
-          , { name = "Cucumber"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.99
-            }
-          )
-        , ( "Broccoli"
-          , { name = "Broccoli"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 2.39
-            }
-          )
-        , ( "Spinach"
-          , { name = "Spinach"
-            , perPackage = 5
-            , unit = "ounce"
-            , cost = 3.99
-            }
-          )
-        , ( "Carrots"
-          , { name = "Carrots"
-            , perPackage = 16
-            , unit = "ounce"
-            , cost = 1.79
-            }
-          )
-        , ( "Lemon"
-          , { name = "Lemon"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.69
-            }
-          )
-        , ( "Tomato sauce"
-          , { name = "Tomato sauce"
-            , perPackage = 15
-            , unit = "ounce"
-            , cost = 0.89
-            }
-          )
-        , ( "Tomato paste"
-          , { name = "Tomato paste"
-            , perPackage = 6
-            , unit = "ounce"
-            , cost = 0.59
-            }
-          )
-        , ( "Diced tomatoes"
-          , { name = "Diced tomatoes"
-            , perPackage = 28
-            , unit = "ounce"
-            , cost = 1.69
-            }
-          )
-        , ( "Alfredo sauce"
-          , { name = "Alfredo sauce"
-            , perPackage = 15
-            , unit = "ounce"
-            , cost = 1.99
-            }
-          )
-        , ( "BBQ sauce"
-          , { name = "BBQ sauce"
-            , perPackage = 20
-            , unit = "ounce"
-            , cost = 2.29
-            }
-          )
-        , ( "Soy sauce"
-          , { name = "Soy sauce"
-            , perPackage = 10
-            , unit = "ounce"
-            , cost = 2.19
-            }
-          )
-        , ( "Pizza sauce"
-          , { name = "Pizza sauce"
-            , perPackage = 15
-            , unit = "ounce"
-            , cost = 1.69
-            }
-          )
-        , ( "Large tortilla"
-          , { name = "Large tortilla"
-            , perPackage = 10
-            , unit = "tortilla"
-            , cost = 3.19
-            }
-          )
-        , ( "Sliced white bread"
-          , { name = "Sliced white bread"
-            , perPackage = 24
-            , unit = "slice"
-            , cost = 2.79
-            }
-          )
-        , ( "Hoagie buns"
-          , { name = "Hoagie buns"
-            , perPackage = 6
-            , unit = "hoagie"
-            , cost = 3.19
-            }
-          )
-        , ( "Hot dog buns"
-          , { name = "Hot dog buns"
-            , perPackage = 8
-            , unit = "bun"
-            , cost = 2.59
-            }
-          )
-        , ( "Hamburger buns"
-          , { name = "Hamburger buns"
-            , perPackage = 8
-            , unit = "bun"
-            , cost = 1.79
-            }
-          )
-        , ( "Spaghetti noodles"
-          , { name = "Spaghetti noodles"
-            , perPackage = 32
-            , unit = "ounce"
-            , cost = 2.49
-            }
-          )
-        , ( "Lasagna noodles"
-          , { name = "Lasagna noodles"
-            , perPackage = 16
-            , unit = "ounce"
-            , cost = 1.99
-            }
-          )
-        , ( "Fettuccine noodles"
-          , { name = "Fettuccine noodles"
-            , perPackage = 16
-            , unit = "ounce"
-            , cost = 1.29
-            }
-          )
-        , ( "Cheese ravioli"
-          , { name = "Cheese ravioli"
-            , perPackage = 24
-            , unit = "ounce"
-            , cost = 3.77
-            }
-          )
-        , ( "Crescent roles"
-          , { name = "Crescent roles"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 2.88
-            }
-          )
-        , ( "Pizza dough"
-          , { name = "Pizza dough"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 2.88
-            }
-          )
-        , ( "Pita bread"
-          , { name = "Pita bread"
-            , perPackage = 6
-            , unit = "pita"
-            , cost = 3.29
-            }
-          )
-        , ( "Bread crumbs"
-          , { name = "Bread crumbs"
-            , perPackage = 10
-            , unit = "ounce"
-            , cost = 1.59
-            }
-          )
-        , ( "Butter"
-          , { name = "Butter"
-            , perPackage = 13
-            , unit = "ounce"
-            , cost = 4.69
-            }
-          )
-        , ( "Eggs"
-          , { name = "Eggs"
-            , perPackage = 12
-            , unit = "item"
-            , cost = 3.99
-            }
-          )
-        , ( "Taco seasoning"
-          , { name = "Taco seasoning"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 0.99
-            }
-          )
-        , ( "Fajita seasoning"
-          , { name = "Fajita seasoning"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.0
-            }
-          )
-        , ( "Frozen pizza"
-          , { name = "Frozen pizza"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 3.97
-            }
-          )
-        , ( "P.F. Chang's General's Chicken"
-          , { name = "P.F. Chang's General's Chicken"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 7.49
-            }
-          )
-        , ( "Chicken cordon bleu"
-          , { name = "Chicken cordon bleu"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 3.98
-            }
-          )
-        , ( "Sour cream"
-          , { name = "Sour cream"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 0.79
-            }
-          )
-        , ( "Doritos"
-          , { name = "Doritos"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 4.29
-            }
-          )
-        , ( "Fritos"
-          , { name = "Fritos"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 3.0
-            }
-          )
-        , ( "Chili Beans"
-          , { name = "Chili Beans"
-            , perPackage = 15.5
-            , unit = "ounce"
-            , cost = 0.79
-            }
-          )
-        , ( "Waffle mix"
-          , { name = "Waffle mix"
-            , perPackage = 32
-            , unit = "ounce"
-            , cost = 2.19
-            }
-          )
-        , ( "Deli ham"
-          , { name = "Deli ham"
-            , perPackage = 1
-            , unit = "pound"
-            , cost = 7.99
-            }
-          )
-        , ( "Deli turkey"
-          , { name = "Deli turkey"
-            , perPackage = 1
-            , unit = "pound"
-            , cost = 9.99
-            }
-          )
-        , ( "Philly steak meat"
-          , { name = "Philly steak meat"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 4.99
-            }
-          )
-        , ( "Chicken breast"
-          , { name = "Chicken breast"
-            , perPackage = 1
-            , unit = "pounds"
-            , cost = 7.64
-            }
-          )
-        , ( "Ground Beef"
-          , { name = "Ground Beef"
-            , perPackage = 3
-            , unit = "pound"
-            , cost = 2.99
-            }
-          )
-        , ( "Ground sausage"
-          , { name = "Ground sausage"
-            , perPackage = 1
-            , unit = "pound"
-            , cost = 4.49
-            }
-          )
-        , ( "Ground chicken"
-          , { name = "Ground chicken"
-            , perPackage = 1
-            , unit = "pound"
-            , cost = 6.49
-            }
-          )
-        , ( "Flank steak"
-          , { name = "Flank steak"
-            , perPackage = 1
-            , unit = "pound"
-            , cost = 11.98
-            }
-          )
-        , ( "Salmon"
-          , { name = "Salmon"
-            , perPackage = 2
-            , unit = "pound"
-            , cost = 12.99
-            }
-          )
-        , ( "Ribeye steak"
-          , { name = "Ribeye steak"
-            , perPackage = 8
-            , unit = "ounce"
-            , cost = 7.99
-            }
-          )
-        , ( "Bacon cheddar brat"
-          , { name = "Bacon cheddar brat"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.0
-            }
-          )
-        , ( "Pineapple brat"
-          , { name = "Pineapple brat"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 1.0
-            }
-          )
-        , ( "Pepperoni"
-          , { name = "Pepperoni"
-            , perPackage = 1
-            , unit = "item"
-            , cost = 2.99
-            }
-          )
-        , ( "Frozen shrimp"
-          , { name = "Frozen shrimp"
-            , perPackage = 2
-            , unit = "pounds"
-            , cost = 16.99
-            }
-          )
-        , ( "Hot dogs"
-          , { name = "Hot dogs"
-            , perPackage = 8
-            , unit = "item"
-            , cost = 2.99
-            }
-          )
-        , ( "Bacon"
-          , { name = "Bacon"
-            , perPackage = 12
-            , unit = "ounce"
-            , cost = 4.79
-            }
-          )
-        ]
+type alias Ingredient =
+    { name : String
+    , amount : Float
+    }
+
+
+type MealType
+    = BreakfastType
+    | LunchType
+    | DinnerType
+    | BreakfastLunchType
+    | LunchDinnerType
+
+
+type alias Recipe =
+    { name : String
+    , servings : Int
+    , maxServings : Int
+    , ingredients : List Ingredient
+    , mealType : MealType
+    }
+
+
+type alias Meal =
+    { recipe : Recipe
+    , servingMultiplier : Float
+    , isLeftover : Bool
+    }
+
+
+randomMealGenerator : Generator Meal
+randomMealGenerator =
+    Random.map3
+        Meal
+        randomRecipeGenerator
+        (Random.float 1 3)
+        Random.bool
+
+
+randomRecipeGenerator : Generator Recipe
+randomRecipeGenerator =
+    Random.map
+        (\index ->
+            NonemptyList.get index allRecipes
+        )
+        (Random.int 0 (NonemptyList.length allRecipes - 1))
+
+
+getRandomMeal : Seed -> ( Meal, Seed )
+getRandomMeal seed =
+    Random.step randomMealGenerator seed
+
+
+getBreakfastPenaltyFor : Meal -> Float
+getBreakfastPenaltyFor meal =
+    case meal.recipe.mealType of
+        BreakfastType ->
+            0
+
+        BreakfastLunchType ->
+            0
+
+        _ ->
+            8
+
+
+getLunchPenaltyFor : Meal -> Float
+getLunchPenaltyFor meal =
+    case meal.recipe.mealType of
+        LunchType ->
+            0
+
+        BreakfastLunchType ->
+            0
+
+        LunchDinnerType ->
+            0
+
+        _ ->
+            8
+
+
+getDinnerPenaltyFor : Meal -> Float
+getDinnerPenaltyFor meal =
+    case meal.recipe.mealType of
+        DinnerType ->
+            0
+
+        LunchDinnerType ->
+            0
+
+        _ ->
+            8
 
 
 allRecipes : Nonempty Recipe
