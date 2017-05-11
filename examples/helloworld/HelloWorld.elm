@@ -48,16 +48,18 @@ update msg model =
     case msg of
         Begin ->
             let
-                _ =
+                solve =
                     evolveSolution
                         { randomDnaGenerator = randomDnaGenerator
                         , evaluateOrganism = evaluateOrganism
                         , crossoverDnas = crossoverDnas
                         , mutateDna = mutateDna
                         , isDoneEvolving = isDoneEvolving
-                        , initialSeed = Random.initialSeed model.initialSeed
                         , method = MinimizePenalty
                         }
+
+                _ =
+                    Random.step solve (Random.initialSeed model.initialSeed)
             in
                 model ! []
 
@@ -128,45 +130,46 @@ evaluateOrganism dna =
         |> toFloat
 
 
-crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
-crossoverDnas dna1 dna2 seed =
-    let
-        ( dna1IsFirst, nextSeed ) =
-            Random.step Random.bool seed
-
-        ( dnaPart1, dnaPart2 ) =
-            if dna1IsFirst then
-                ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
-            else
-                ( List.take crossover_split_index dna2, List.drop crossover_split_index dna1 )
-    in
-        ( List.append dnaPart1 dnaPart2, nextSeed )
-
-
-mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-mutateDna ( dna, seed ) =
-    let
-        ( randomIndex, seed2 ) =
-            Random.step (Random.int 0 (String.length target - 1)) seed
-
-        ( randomAsciiCode, seed3 ) =
-            Random.int 1 53
-                |> Random.map asciiCodeMapper
-                |> (\gen ->
-                        Random.step gen seed2
-                   )
-
-        mutatedDna =
-            dna
-                |> List.indexedMap
-                    (\index asciiCode ->
-                        if index == randomIndex then
-                            randomAsciiCode
+crossoverDnas : Dna -> Dna -> Generator Dna
+crossoverDnas dna1 dna2 =
+    Random.bool
+        |> Random.map
+            (\dna1IsFirst ->
+                let
+                    ( dnaPart1, dnaPart2 ) =
+                        if dna1IsFirst then
+                            ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
                         else
-                            asciiCode
-                    )
+                            ( List.take crossover_split_index dna2, List.drop crossover_split_index dna1 )
+                in
+                    List.append dnaPart1 dnaPart2
+            )
+
+
+asciiCodeGenerator : Generator Int
+asciiCodeGenerator =
+    Random.int 1 53
+        |> Random.map asciiCodeMapper
+
+
+mutateDna : Dna -> Generator Dna
+mutateDna dna =
+    let
+        handleMutation : Int -> Int -> Dna
+        handleMutation offset generatedAsciiCode =
+            List.indexedMap
+                (\index asciiCode ->
+                    if index == offset then
+                        generatedAsciiCode
+                    else
+                        asciiCode
+                )
+                dna
     in
-        ( mutatedDna, seed3 )
+        Random.map2
+            handleMutation
+            (Random.int 0 (String.length target - 1))
+            asciiCodeGenerator
 
 
 isDoneEvolving : Dna -> Float -> Int -> Bool
