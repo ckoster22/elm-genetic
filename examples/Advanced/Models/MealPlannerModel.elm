@@ -30,6 +30,48 @@ type alias Dna =
     MealPlan
 
 
+getBreakfastMeal : Day -> Maybe Meal
+getBreakfastMeal day =
+    case day of
+        Breakfast meal ->
+            Just meal
+
+        BreakfastLunch meal _ ->
+            Just meal
+
+        _ ->
+            Nothing
+
+
+getLunchMeal : Day -> Maybe Meal
+getLunchMeal day =
+    case day of
+        BreakfastLunch _ meal ->
+            Just meal
+
+        Lunch meal ->
+            Just meal
+
+        LunchDinner meal _ ->
+            Just meal
+
+        _ ->
+            Nothing
+
+
+getDinnerMeal : Day -> Maybe Meal
+getDinnerMeal day =
+    case day of
+        LunchDinner _ meal ->
+            Just meal
+
+        Dinner meal ->
+            Just meal
+
+        _ ->
+            Nothing
+
+
 randomMealPlannerGenerator : Generator MealPlan
 randomMealPlannerGenerator =
     Random.pair randomDayGenerator randomDayGenerator
