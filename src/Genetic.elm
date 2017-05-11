@@ -228,6 +228,7 @@ produceChild : Options dna -> Organism dna -> Organism dna -> Seed -> ( Organism
 produceChild options parent1 parent2 seed =
     let
         ( childDna, nextSeed ) =
+            -- TODO: randomly determine parent order here
             options.crossoverDnas parent1.dna parent2.dna seed
                 |> options.mutateDna
     in
