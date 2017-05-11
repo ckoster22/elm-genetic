@@ -1,4 +1,4 @@
-module MealPlannerModel exposing (..)
+module Advanced.Models.MealPlannerModel exposing (..)
 
 
 type alias Food =

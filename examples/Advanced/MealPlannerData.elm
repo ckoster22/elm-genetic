@@ -1,7 +1,7 @@
-module MealPlannerData exposing (..)
+module Advanced.MealPlannerData exposing (..)
 
 import Dict exposing (Dict)
-import MealPlannerModel exposing (Food, Recipe, MealType(..))
+import Advanced.Models.MealPlannerModel exposing (Food, Recipe, MealType(..))
 import List.Nonempty as NonemptyList exposing (Nonempty)
 
 
