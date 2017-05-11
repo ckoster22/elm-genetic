@@ -1,6 +1,6 @@
 module HelloWorld exposing (main)
 
-import Genetic exposing (evolveSolution, Dna)
+import Genetic exposing (evolveSolution, Method(..))
 import Random exposing (Generator, Seed)
 import Char
 import Array
@@ -51,14 +51,19 @@ update msg model =
                 _ =
                     evolveSolution
                         { randomDnaGenerator = randomDnaGenerator
-                        , scoreOrganism = scoreOrganism
+                        , evaluateOrganism = evaluateOrganism
                         , crossoverDnas = crossoverDnas
                         , mutateDna = mutateDna
                         , isDoneEvolving = isDoneEvolving
                         , initialSeed = Random.initialSeed model.initialSeed
+                        , method = MinimizePenalty
                         }
             in
                 model ! []
+
+
+type alias Dna =
+    List Int
 
 
 target : String
@@ -99,12 +104,12 @@ asciiCodeMapper code =
         32
 
 
-scoreOrganism : Dna -> Float
-scoreOrganism dna =
+evaluateOrganism : Dna -> Float
+evaluateOrganism dna =
     target_ascii
         |> Array.fromList
         |> Array.foldl
-            (\asciiCode ( score, index ) ->
+            (\asciiCode ( points, index ) ->
                 let
                     organismAscii_ =
                         dna
@@ -113,7 +118,7 @@ scoreOrganism dna =
                 in
                     case organismAscii_ of
                         Just organismAscii ->
-                            ( score + abs (organismAscii - asciiCode), index + 1 )
+                            ( points + abs (organismAscii - asciiCode), index + 1 )
 
                         Nothing ->
                             Debug.crash "Organism dna is too short!"
@@ -165,9 +170,9 @@ mutateDna ( dna, seed ) =
 
 
 isDoneEvolving : Dna -> Float -> Int -> Bool
-isDoneEvolving bestDna bestDnaScore numGenerations =
+isDoneEvolving bestDna bestDnaPoints numGenerations =
     let
         _ =
             Debug.log "" (List.map Char.fromCode bestDna |> String.fromList)
     in
-        bestDnaScore == 0 || numGenerations >= max_iterations
+        bestDnaPoints == 0 || numGenerations >= max_iterations
