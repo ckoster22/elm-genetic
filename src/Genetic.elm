@@ -9,7 +9,7 @@ invoked with the appropriate callbacks it will attempt to find an optimal soluti
 
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
-import Random exposing (Generator, Seed)
+import Random exposing (Generator)
 
 
 population_size : Int
@@ -19,14 +19,16 @@ population_size =
 
 half_population_size : Int
 half_population_size =
-    round <| toFloat population_size / 2
+    population_size // 2
 
 
 {-| For simple use cases the genetic algorithm will be doing one of two things:
-  * Maximizing a score
-  * Minimizing a penalty or cost
+
+  - Maximizing a score
+  - Minimizing a penalty or cost
 
 Your `evaluateOrganism` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
+
 -}
 type Method
     = MaximizeScore
@@ -46,10 +48,9 @@ type alias Population dna =
 type alias Options dna =
     { randomDnaGenerator : Generator dna
     , evaluateOrganism : dna -> Float
-    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
+    , crossoverDnas : dna -> dna -> Generator dna
+    , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
     , method : Method
     }
 
@@ -57,69 +58,61 @@ type alias Options dna =
 {-| Kicks off the genetic algorithm.
 
 There are a handful of callbacks required because the algorithm needs the following information:
-  * How to generate a random solution
-  * Given a potential solution, how should it be evaluated?
-  * How to breed two solutions
-  * Is the current best solution good enough?
-  * An initial random seed
-  * Are we maximizing a score or minimizing a penalty?
+
+  - How to generate a random solution
+  - Given a potential solution, how should it be evaluated?
+  - How to breed two solutions
+  - Is the current best solution good enough?
+  - An initial random seed
+  - Are we maximizing a score or minimizing a penalty?
 
 These details are captured in the following record:
 
-``` elm
-{ randomDnaGenerator : Generator dna
-, evaluateOrganism : dna -> Float
-, crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-, mutateDna : ( dna, Seed ) -> ( dna, Seed )
-, isDoneEvolving : dna -> Float -> Int -> Bool
-, initialSeed : Seed
-, method : Method
-}
-```
+    type alias Options dna =
+        { randomDnaGenerator : Generator dna
+        , evaluateOrganism : dna -> Float
+        , crossoverDnas : dna -> dna -> Generator dna
+        , mutateDna : dna -> Generator dna
+        , isDoneEvolving : dna -> Float -> Int -> Bool
+        , method : Method
+        }
 
 The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
 
 When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateOrganism`, and the next random `Seed` to be used in subsequent `Random` calls.
+
 -}
-evolveSolution :
-    { randomDnaGenerator : Generator dna
-    , evaluateOrganism : dna -> Float
-    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
-    , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
-    , method : Method
-    }
-    -> ( Population dna, dna, Float, Seed )
+evolveSolution : Options dna -> Generator ( Population dna, dna, Float )
 evolveSolution options =
-    let
-        ( initialPopulation, seed2 ) =
-            generateInitialPopulation options
-
-        ( finalGeneration, bestOrganism, seed3 ) =
-            let
-                ( nextPopulation, bestOrganism, seed3 ) =
-                    executeStep options initialPopulation seed2
-            in
-                recursivelyEvolve 0 options nextPopulation bestOrganism seed3
-    in
-        ( finalGeneration, bestOrganism.dna, bestOrganism.points, seed3 )
+    generateInitialPopulation options
+        |> Random.andThen (evolveOnce options)
+        |> Random.andThen (uncurry <| recursivelyEvolve 0 options)
+        |> Random.map
+            (\( finalGen, bestOrganism ) ->
+                ( finalGen, bestOrganism.dna, bestOrganism.points )
+            )
 
 
-recursivelyEvolve : Int -> Options dna -> Population dna -> Organism dna -> Seed -> ( Population dna, Organism dna, Seed )
-recursivelyEvolve numGenerations options population bestOrganism seed =
+recursivelyEvolve :
+    Int
+    -> Options dna
+    -> Population dna
+    -> Organism dna
+    -> Generator ( Population dna, Organism dna )
+recursivelyEvolve numGenerations options population bestOrganism =
     if (options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations) then
-        ( population, bestOrganism, seed )
+        constantGen ( population, bestOrganism )
     else
-        let
-            ( nextPopulation, nextBestOrganism, nextSeed ) =
-                executeStep options population seed
-        in
-            recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism nextSeed
+        evolveOnce options population
+            |> Random.andThen
+                (uncurry <| recursivelyEvolve (numGenerations + 1) options)
 
 
-executeStep : Options dna -> Population dna -> Seed -> ( Population dna, Organism dna, Seed )
-executeStep options population seed =
+evolveOnce :
+    Options dna
+    -> Population dna
+    -> Generator ( Population dna, Organism dna )
+evolveOnce options population =
     let
         sortedPopulation =
             NonemptyList.sortBy .points population
@@ -133,25 +126,26 @@ executeStep options population seed =
 
                 MinimizePenalty ->
                     NonemptyList.head sortedPopulation
-
-        ( nextPopulation, nextSeed ) =
-            generateNextGeneration options population seed
     in
-        ( nextPopulation, bestSolution, nextSeed )
+        generateNextGeneration options population
+            |> Random.map
+                (\nextPopulation ->
+                    ( nextPopulation, bestSolution )
+                )
 
 
-generateInitialPopulation : Options dna -> ( Nonempty (Organism dna), Seed )
+generateInitialPopulation : Options dna -> Generator (Nonempty (Organism dna))
 generateInitialPopulation options =
     options.randomDnaGenerator
         |> Random.map
             (\asciiCodes ->
                 Organism asciiCodes <| options.evaluateOrganism asciiCodes
             )
-        |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
+        |> NonemptyHelper.randomNonemptyList population_size
 
 
-generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
-generateNextGeneration options currPopulation seed =
+generateNextGeneration : Options dna -> Population dna -> Generator (Population dna)
+generateNextGeneration options currPopulation =
     let
         sortedPopulation =
             currPopulation
@@ -165,48 +159,44 @@ generateNextGeneration options currPopulation seed =
 
                 MinimizePenalty ->
                     List.take half_population_size sortedPopulation
-
-        ( nextGeneration, nextSeed ) =
-            reproduceBestOrganisms options bestHalfOfPopulation seed
     in
-        ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
+        reproduceBestOrganisms options bestHalfOfPopulation
+            |> Random.map
+                (\nextGeneration ->
+                    nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation
+                )
 
 
-reproduceBestOrganisms : Options dna -> List (Organism dna) -> Seed -> ( List (Organism dna), Seed )
-reproduceBestOrganisms options bestHalfOfPopulation seed =
-    let
-        ( nextGeneration, _, nextSeed3 ) =
-            bestHalfOfPopulation
-                |> List.foldl
-                    (\currOrganism ( organisms, prevOrganism_, nextSeed ) ->
-                        case prevOrganism_ of
-                            Just prevOrganism ->
-                                let
-                                    ( family, nextSeed2 ) =
-                                        produceFamily options prevOrganism currOrganism nextSeed
-                                in
-                                    ( List.append organisms family, Nothing, nextSeed2 )
+constantGen : a -> Generator a
+constantGen val =
+    Random.bool |> Random.map (always val)
 
-                            Nothing ->
-                                ( organisms, Just currOrganism, nextSeed )
+
+reproduceBestOrganisms :
+    Options dna
+    -> List (Organism dna)
+    -> Generator (List (Organism dna))
+reproduceBestOrganisms options bestHalfOfPopulation =
+    case bestHalfOfPopulation of
+        [] ->
+            constantGen []
+
+        [ organism ] ->
+            constantGen [ organism ]
+
+        prev :: curr :: rest ->
+            produceFamily options prev curr
+                |> Random.andThen
+                    (\family ->
+                        reproduceBestOrganisms options (curr :: rest)
+                            |> Random.map (\organisms -> List.append organisms family)
                     )
-                    ( [], Nothing, seed )
-    in
-        ( nextGeneration, nextSeed3 )
 
 
-produceFamily : Options dna -> Organism dna -> Organism dna -> Seed -> ( List (Organism dna), Seed )
-produceFamily options parent1 parent2 seed =
+produceFamily : Options dna -> Organism dna -> Organism dna -> Generator (List (Organism dna))
+produceFamily options parent1 parent2 =
     let
-        ( child1, seed2 ) =
-            produceChild options parent1 parent2 seed
-
-        ( child2, seed3 ) =
-            produceChild options parent1 parent2 seed2
-
-        ( child3, seed4 ) =
-            produceChild options parent1 parent2 seed3
-
+        bestParent : Organism dna
         bestParent =
             case options.method of
                 MaximizeScore ->
@@ -221,14 +211,15 @@ produceFamily options parent1 parent2 seed =
                     else
                         parent2
     in
-        ( [ child1, child2, child3, bestParent ], seed4 )
+        Random.list 3 (produceChild options parent1 parent2)
+            |> Random.map (\children -> children ++ [ bestParent ])
 
 
-produceChild : Options dna -> Organism dna -> Organism dna -> Seed -> ( Organism dna, Seed )
-produceChild options parent1 parent2 seed =
-    let
-        ( childDna, nextSeed ) =
-            options.crossoverDnas parent1.dna parent2.dna seed
-                |> options.mutateDna
-    in
-        ( Organism childDna (options.evaluateOrganism childDna), nextSeed )
+produceChild : Options dna -> Organism dna -> Organism dna -> Generator (Organism dna)
+produceChild options parent1 parent2 =
+    options.crossoverDnas parent1.dna parent2.dna
+        |> Random.andThen options.mutateDna
+        |> Random.map
+            (\childDna ->
+                Organism childDna (options.evaluateOrganism childDna)
+            )
