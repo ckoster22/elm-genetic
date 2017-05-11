@@ -55,7 +55,7 @@ type alias Options dna =
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
-    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -78,7 +78,7 @@ These details are captured in the following record:
 { randomDnaGenerator : Generator dna
 , evaluateSolution : dna -> Float
 , crossoverDnas : dna -> dna -> dna
-, mutateDna : Seed -> dna -> ( dna, Seed )
+, mutateDna : dna -> Generator dna
 , isDoneEvolving : dna -> Float -> Int -> Bool
 , initialSeed : Seed
 , method : Method
@@ -93,7 +93,7 @@ evolveSolution :
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
-    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -126,13 +126,18 @@ recursivelyEvolve numGenerations options population bestOrganism seed =
             recursivelyEvolve (numGenerations + 1) options nextPopulation nextBestOrganism nextSeed
 
 
+generate : Seed -> Generator a -> ( a, Seed )
+generate seed generator =
+    Random.step generator seed
+
+
 {-| TODO
 -}
 executeStep :
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
-    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -159,7 +164,8 @@ executeStep options generation seed =
                     NonemptyList.head sortedPopulation
 
         ( nextPopulation, nextSeed ) =
-            generateNextGeneration options population seed
+            nextGenerationGenerator options population
+                |> generate seed
     in
         ( nextPopulation, bestSolution, nextSeed )
 
@@ -177,7 +183,7 @@ generateInitialPopulation :
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
-    , mutateDna : Seed -> dna -> ( dna, Seed )
+    , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -195,8 +201,8 @@ generateInitialPopulation options =
            )
 
 
-generateNextGeneration : Options dna -> Population dna -> Seed -> ( Population dna, Seed )
-generateNextGeneration options currPopulation seed =
+nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)
+nextGenerationGenerator options currPopulation =
     let
         sortedPopulation =
             currPopulation
@@ -210,48 +216,40 @@ generateNextGeneration options currPopulation seed =
 
                 MinimizePenalty ->
                     List.take half_population_size sortedPopulation
-
-        ( nextGeneration, nextSeed ) =
-            reproduceBestOrganisms options bestHalfOfPopulation seed
     in
-        ( nextGeneration |> NonemptyList.fromList |> Maybe.withDefault currPopulation, nextSeed )
+        bestOrganismsGenerator options bestHalfOfPopulation
+            |> Random.map
+                (\organismList ->
+                    organismList |> NonemptyList.fromList |> Maybe.withDefault currPopulation
+                )
 
 
-reproduceBestOrganisms : Options dna -> List (Organism dna) -> Seed -> ( List (Organism dna), Seed )
-reproduceBestOrganisms options bestHalfOfPopulation seed =
-    let
-        ( nextGeneration, _, nextSeed3 ) =
-            bestHalfOfPopulation
-                |> List.foldl
-                    (\currOrganism ( organisms, prevOrganism_, nextSeed ) ->
-                        case prevOrganism_ of
-                            Just prevOrganism ->
-                                let
-                                    ( family, nextSeed2 ) =
-                                        produceFamily options prevOrganism currOrganism nextSeed
-                                in
-                                    ( List.append organisms family, Nothing, nextSeed2 )
+constantGen : a -> Generator a
+constantGen val =
+    Random.bool |> Random.map (always val)
 
-                            Nothing ->
-                                ( organisms, Just currOrganism, nextSeed )
+
+bestOrganismsGenerator : Options dna -> List (Organism dna) -> Generator (List (Organism dna))
+bestOrganismsGenerator options bestHalfOfPopulation =
+    case bestHalfOfPopulation of
+        [] ->
+            constantGen []
+
+        [ organism ] ->
+            constantGen [ organism ]
+
+        prev :: curr :: rest ->
+            familyGenerator options prev curr
+                |> Random.andThen
+                    (\family ->
+                        bestOrganismsGenerator options rest
+                            |> Random.map (\organisms -> List.append organisms family)
                     )
-                    ( [], Nothing, seed )
-    in
-        ( nextGeneration, nextSeed3 )
 
 
-produceFamily : Options dna -> Organism dna -> Organism dna -> Seed -> ( List (Organism dna), Seed )
-produceFamily options parent1 parent2 seed =
+familyGenerator : Options dna -> Organism dna -> Organism dna -> Generator (List (Organism dna))
+familyGenerator options parent1 parent2 =
     let
-        ( child1, seed2 ) =
-            produceChild options parent1 parent2 seed
-
-        ( child2, seed3 ) =
-            produceChild options parent1 parent2 seed2
-
-        ( child3, seed4 ) =
-            produceChild options parent1 parent2 seed3
-
         bestParent =
             case options.method of
                 MaximizeScore ->
@@ -266,23 +264,27 @@ produceFamily options parent1 parent2 seed =
                     else
                         parent2
     in
-        ( [ child1, child2, child3, bestParent ], seed4 )
+        Random.map3
+            (\child1 child2 child3 ->
+                [ child1, child2, child3, bestParent ]
+            )
+            (childGenerator options parent1 parent2)
+            (childGenerator options parent1 parent2)
+            (childGenerator options parent1 parent2)
 
 
-produceChild : Options dna -> Organism dna -> Organism dna -> Seed -> ( Organism dna, Seed )
-produceChild options parent1 parent2 seed =
-    let
-        ( dna1IsFirst, nextSeed ) =
-            Random.step Random.bool seed
-
-        ( dna1, dna2 ) =
+childGenerator : Options dna -> Organism dna -> Organism dna -> Generator (Organism dna)
+childGenerator options parent1 parent2 =
+    Random.map
+        (\dna1IsFirst ->
             if dna1IsFirst then
-                ( parent1.dna, parent2.dna )
+                options.crossoverDnas parent1.dna parent2.dna
             else
-                ( parent2.dna, parent1.dna )
-
-        ( childDna, nextSeed2 ) =
-            options.crossoverDnas dna1 dna2
-                |> options.mutateDna nextSeed
-    in
-        ( Organism childDna (options.evaluateSolution childDna), nextSeed2 )
+                options.crossoverDnas parent2.dna parent1.dna
+        )
+        Random.bool
+        |> Random.andThen options.mutateDna
+        |> Random.map
+            (\childDna ->
+                Organism childDna (options.evaluateSolution childDna)
+            )

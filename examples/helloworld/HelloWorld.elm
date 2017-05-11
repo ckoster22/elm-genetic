@@ -137,30 +137,29 @@ crossoverDnas dna1 dna2 =
         List.append dnaPart1 dnaPart2
 
 
-mutateDna : Seed -> Dna -> ( Dna, Seed )
-mutateDna seed dna =
+mutateDna : Dna -> Generator Dna
+mutateDna dna =
     let
-        ( randomIndex, seed2 ) =
-            Random.step (Random.int 0 (String.length target - 1)) seed
+        randIndexGenerator =
+            Random.int 0 (String.length target - 1)
 
-        ( randomAsciiCode, seed3 ) =
+        randAsciiCodeGenerator =
             Random.int 1 53
                 |> Random.map asciiCodeMapper
-                |> (\gen ->
-                        Random.step gen seed2
-                   )
-
-        mutatedDna =
-            dna
-                |> List.indexedMap
-                    (\index asciiCode ->
-                        if index == randomIndex then
-                            randomAsciiCode
-                        else
-                            asciiCode
-                    )
     in
-        ( mutatedDna, seed3 )
+        Random.map2
+            (\randomIndex randomAsciiCode ->
+                dna
+                    |> List.indexedMap
+                        (\index asciiCode ->
+                            if index == randomIndex then
+                                randomAsciiCode
+                            else
+                                asciiCode
+                        )
+            )
+            randIndexGenerator
+            randAsciiCodeGenerator
 
 
 isDoneEvolving : Dna -> Float -> Int -> Bool
