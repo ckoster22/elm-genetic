@@ -128,23 +128,17 @@ evaluateOrganism dna =
         |> toFloat
 
 
-crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
-crossoverDnas dna1 dna2 seed =
+crossoverDnas : Dna -> Dna -> Dna
+crossoverDnas dna1 dna2 =
     let
-        ( dna1IsFirst, nextSeed ) =
-            Random.step Random.bool seed
-
         ( dnaPart1, dnaPart2 ) =
-            if dna1IsFirst then
-                ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
-            else
-                ( List.take crossover_split_index dna2, List.drop crossover_split_index dna1 )
+            ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
     in
-        ( List.append dnaPart1 dnaPart2, nextSeed )
+        List.append dnaPart1 dnaPart2
 
 
-mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-mutateDna ( dna, seed ) =
+mutateDna : Seed -> Dna -> ( Dna, Seed )
+mutateDna seed dna =
     let
         ( randomIndex, seed2 ) =
             Random.step (Random.int 0 (String.length target - 1)) seed

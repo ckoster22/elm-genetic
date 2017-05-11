@@ -123,37 +123,24 @@ randomRecipeGenerator =
         (Random.int 0 (NonemptyList.length allRecipes - 1))
 
 
-crossoverMealplans : MealPlan -> MealPlan -> Seed -> ( MealPlan, Seed )
-crossoverMealplans mealplan1 mealplan2 seed =
+crossoverMealplans : MealPlan -> MealPlan -> MealPlan
+crossoverMealplans mealplan1 mealplan2 =
     let
-        ( isMealplan1First, nextSeed ) =
-            Random.step Random.bool seed
-
         crossedMealplan =
-            if isMealplan1First then
-                { sunday = mealplan1.sunday
-                , monday = mealplan1.monday
-                , tuesday = mealplan1.tuesday
-                , wednesday = mealplan2.wednesday
-                , thursday = mealplan2.thursday
-                , friday = mealplan2.friday
-                , saturday = mealplan2.saturday
-                }
-            else
-                { sunday = mealplan2.sunday
-                , monday = mealplan2.monday
-                , tuesday = mealplan2.tuesday
-                , wednesday = mealplan1.wednesday
-                , thursday = mealplan1.thursday
-                , friday = mealplan1.friday
-                , saturday = mealplan1.saturday
-                }
+            { sunday = mealplan1.sunday
+            , monday = mealplan1.monday
+            , tuesday = mealplan1.tuesday
+            , wednesday = mealplan2.wednesday
+            , thursday = mealplan2.thursday
+            , friday = mealplan2.friday
+            , saturday = mealplan2.saturday
+            }
     in
-        ( crossedMealplan, nextSeed )
+        crossedMealplan
 
 
-mutateMealplan : ( MealPlan, Seed ) -> ( MealPlan, Seed )
-mutateMealplan ( mealPlan, seed ) =
+mutateMealplan : Seed -> MealPlan -> ( MealPlan, Seed )
+mutateMealplan seed mealPlan =
     let
         ( randDay, seed2 ) =
             Random.step (Random.int 1 7) seed

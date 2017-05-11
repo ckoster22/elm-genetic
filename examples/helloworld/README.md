@@ -127,22 +127,14 @@ Pivots are highly dependent upon the data structure of your dna. Since our dna i
 crossover_split_index =
     floor ((toFloat (String.length target)) / 2)
 
-crossoverDnas : Dna -> Dna -> Seed -> ( Dna, Seed )
-crossoverDnas dna1 dna2 seed =
+crossoverDnas : Dna -> Dna -> Dna
+crossoverDnas dna1 dna2 =
     let
-        ( dna1IsFirst, nextSeed ) =
-            Random.step Random.bool seed
-
         ( dnaPart1, dnaPart2 ) =
-            if dna1IsFirst then
-                ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
-            else
-                ( List.take crossover_split_index dna2, List.drop crossover_split_index dna1 )
+            ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
     in
-        ( List.append dnaPart1 dnaPart2, nextSeed )
+        List.append dnaPart1 dnaPart2
 ```
-
-Notice that a seed is passed into `crossoverDnas` and a new seed is also returned from the function.
 
 #### Mutation
 
@@ -153,8 +145,8 @@ There are a lot of opinions on mutation rates.. but I've seen 3% - 10% work well
 Since "Hello world" is 11 characters in length we're going to mutate only one letter. 1 / 11 = 9.1% which is in the 3% to 10% range.
 
 ``` elm
-mutateDna : ( Dna, Seed ) -> ( Dna, Seed )
-mutateDna ( dna, seed ) =
+mutateDna : Seed -> Dna -> ( Dna, Seed )
+mutateDna seed dna =
     let
         ( randomIndex, seed2 ) =
             Random.step (Random.int 0 (String.length target - 1)) seed
@@ -179,7 +171,7 @@ mutateDna ( dna, seed ) =
         ( mutatedDna, seed3 )
 ```
 
-Again, keep in mind that new random seeds need to be tracked and returned.
+Notice that a seed is passed into `crossoverDnas` and a new seed is also returned from the function.
 
 ### Define a function to stop the recursion
 

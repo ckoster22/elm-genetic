@@ -46,8 +46,8 @@ type alias Population dna =
 type alias Options dna =
     { randomDnaGenerator : Generator dna
     , evaluateOrganism : dna -> Float
-    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
+    , crossoverDnas : dna -> dna -> dna
+    , mutateDna : Seed -> dna -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -69,8 +69,8 @@ These details are captured in the following record:
 ``` elm
 { randomDnaGenerator : Generator dna
 , evaluateOrganism : dna -> Float
-, crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-, mutateDna : ( dna, Seed ) -> ( dna, Seed )
+, crossoverDnas : dna -> dna -> dna
+, mutateDna : Seed -> dna -> ( dna, Seed )
 , isDoneEvolving : dna -> Float -> Int -> Bool
 , initialSeed : Seed
 , method : Method
@@ -84,8 +84,8 @@ When the algorithm is finished it'll return the best solution (dna) it could fin
 evolveSolution :
     { randomDnaGenerator : Generator dna
     , evaluateOrganism : dna -> Float
-    , crossoverDnas : dna -> dna -> Seed -> ( dna, Seed )
-    , mutateDna : ( dna, Seed ) -> ( dna, Seed )
+    , crossoverDnas : dna -> dna -> dna
+    , mutateDna : Seed -> dna -> ( dna, Seed )
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , initialSeed : Seed
     , method : Method
@@ -227,9 +227,17 @@ produceFamily options parent1 parent2 seed =
 produceChild : Options dna -> Organism dna -> Organism dna -> Seed -> ( Organism dna, Seed )
 produceChild options parent1 parent2 seed =
     let
-        ( childDna, nextSeed ) =
-            -- TODO: randomly determine parent order here
-            options.crossoverDnas parent1.dna parent2.dna seed
-                |> options.mutateDna
+        ( dna1IsFirst, nextSeed ) =
+            Random.step Random.bool seed
+
+        ( dna1, dna2 ) =
+            if dna1IsFirst then
+                ( parent1.dna, parent2.dna )
+            else
+                ( parent2.dna, parent1.dna )
+
+        ( childDna, nextSeed2 ) =
+            options.crossoverDnas dna1 dna2
+                |> options.mutateDna nextSeed
     in
-        ( Organism childDna (options.evaluateOrganism childDna), nextSeed )
+        ( Organism childDna (options.evaluateOrganism childDna), nextSeed2 )
