@@ -1,4 +1,4 @@
-module Advanced.Models.Meal
+module Models.Meal
     exposing
         ( Meal
         , randomMealGenerator

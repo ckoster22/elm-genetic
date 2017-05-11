@@ -1,10 +1,10 @@
-module Advanced.MealPlanner exposing (main)
+module MealPlanner exposing (main)
 
 import Genetic exposing (evolveSolution, Method(..))
 import Random exposing (Generator, Seed)
 import Task
 import Json.Decode as Decode exposing (decodeValue, field, int)
-import Advanced.Models.MealPlannerModel exposing (..)
+import Models.MealPlannerModel exposing (..)
 
 
 main : Program Decode.Value Model Msg

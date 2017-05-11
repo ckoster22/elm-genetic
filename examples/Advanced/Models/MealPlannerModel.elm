@@ -1,6 +1,6 @@
-module Advanced.Models.MealPlannerModel exposing (..)
+module Models.MealPlannerModel exposing (..)
 
-import Advanced.Models.Meal exposing (..)
+import Models.Meal exposing (..)
 import Random exposing (Generator, Seed)
 
 

@@ -1,5 +1,5 @@
 const Elm = require('./mealplanner');
 
-Elm.Advanced.MealPlanner.worker({
+Elm.MealPlanner.worker({
     currentTimeInMillis: (new Date()).getTime()
 });
