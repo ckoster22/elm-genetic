@@ -102,11 +102,8 @@ evolveSolution :
     -> ( StepValue { dna : dna, points : Float } dna, Seed )
 evolveSolution options =
     let
-        ( initialGeneration, seed2 ) =
+        ( initialStepValue, seed2 ) =
             generateInitialPopulation options
-
-        initialStepValue =
-            StepValue.new initialGeneration (NonemptyList.head initialGeneration |> .dna) 0
 
         ( stepValue, seed3 ) =
             let
@@ -200,14 +197,18 @@ generateInitialPopulation :
     , initialSeed : Seed
     , method : Method
     }
-    -> ( Nonempty (Organism dna), Seed )
+    -> ( StepValue { dna : dna, points : Float } dna, Seed )
 generateInitialPopulation options =
-    options.randomDnaGenerator
-        |> Random.map
-            (\asciiCodes ->
-                Organism asciiCodes <| options.evaluateSolution asciiCodes
-            )
-        |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
+    let
+        ( initialGeneration, seed ) =
+            options.randomDnaGenerator
+                |> Random.map
+                    (\asciiCodes ->
+                        Organism asciiCodes <| options.evaluateSolution asciiCodes
+                    )
+                |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
+    in
+        ( StepValue.new initialGeneration (NonemptyList.head initialGeneration |> .dna) 0, seed )
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)

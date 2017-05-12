@@ -1,12 +1,14 @@
 module MealPlanner exposing (main)
 
-import Genetic exposing (evolveSolution, Method(..))
+import Genetic exposing (executeStep, generateInitialPopulation, Method(..))
+import Genetic.StepValue as StepValue exposing (StepValue)
 import Random exposing (Generator, Seed)
 import Task
 import Models.MealPlannerModel exposing (..)
 import Models.Meal exposing (..)
 import Html exposing (Html, div, button, span, text)
 import Html.Attributes exposing (style)
+import Time exposing (Time)
 
 
 main : Program Never Model Msg
@@ -14,19 +16,37 @@ main =
     Html.program
         { init = init
         , update = update
-        , subscriptions = (\_ -> Sub.none)
+        , subscriptions = subscriptions
         , view = (\model -> view model.bestMealPlan)
         }
 
 
 type alias Model =
-    { initialSeed : Int
+    { seed : Seed
     , bestMealPlan : MealPlan
+    , currIteration : Int
+    , stepValue_ :
+        Maybe (StepValue { dna : MealPlan, points : Float } MealPlan)
+        -- TODO: this is bad, fix it
     }
 
 
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    if model.currIteration < 100 then
+        case model.stepValue_ of
+            Just stepValue ->
+                Time.every (100 * Time.millisecond) <| RunStep stepValue
+
+            Nothing ->
+                Sub.none
+    else
+        Sub.none
+
+
 type Msg
-    = Begin
+    = RunFirstStep
+    | RunStep (StepValue { dna : MealPlan, points : Float } MealPlan) Time
 
 
 init : ( Model, Cmd Msg )
@@ -34,48 +54,60 @@ init =
     let
         startThingsMsg =
             Task.succeed Nothing
-                |> Task.perform (\_ -> Begin)
+                |> Task.perform (always RunFirstStep)
 
         blankMealPlan =
             MealPlan NoMeals NoMeals NoMeals NoMeals NoMeals NoMeals NoMeals
     in
-        (Model 12345 blankMealPlan) ! [ startThingsMsg ]
+        (Model (Random.initialSeed 12345) blankMealPlan 0 Nothing) ! [ startThingsMsg ]
 
 
-
--- init : Decode.Value -> ( Model, Cmd Msg )
--- init json =
---     let
---         initialSeed =
---             case (decodeValue (field "currentTimeInMillis" int) json) of
---                 Ok seed ->
---                     seed
---                 Err reason ->
---                     Debug.crash <| "Unable to decode program arguments: " ++ reason
---         startThingsMsg =
---             Task.succeed Nothing
---                 |> Task.perform (\_ -> Begin)
---     in
---         { initialSeed = initialSeed } ! [ startThingsMsg ]
+options :
+    Seed
+    -> { randomDnaGenerator : Generator MealPlan
+       , evaluateSolution : MealPlan -> Float
+       , crossoverDnas : MealPlan -> MealPlan -> MealPlan
+       , mutateDna : MealPlan -> Generator MealPlan
+       , isDoneEvolving : MealPlan -> Float -> Int -> Bool
+       , initialSeed : Seed
+       , method : Method
+       }
+options seed =
+    { randomDnaGenerator = randomMealPlannerGenerator
+    , evaluateSolution = evaluateMealPlan
+    , crossoverDnas = crossoverMealplans
+    , mutateDna = mutateMealplan
+    , isDoneEvolving = isDoneEvolving
+    , initialSeed = seed
+    , method = MinimizePenalty
+    }
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        Begin ->
+    case Debug.log "msg" msg of
+        RunFirstStep ->
             let
-                _ =
-                    evolveSolution
-                        { randomDnaGenerator = randomMealPlannerGenerator
-                        , evaluateSolution = evaluateMealPlan
-                        , crossoverDnas = crossoverMealplans
-                        , mutateDna = mutateMealplan
-                        , isDoneEvolving = isDoneEvolving
-                        , initialSeed = Random.initialSeed model.initialSeed
-                        , method = MinimizePenalty
-                        }
+                ( initialStepValue, nextSeed ) =
+                    generateInitialPopulation (options model.seed)
+
+                ( nextStepValue, nextSeed2 ) =
+                    executeStep (options model.seed) initialStepValue
+                        |> (\gen ->
+                                Random.step gen nextSeed
+                           )
             in
-                model ! []
+                { model | currIteration = model.currIteration + 1, stepValue_ = Just nextStepValue } ! []
+
+        RunStep stepValue _ ->
+            let
+                ( nextStepValue, nextSeed2 ) =
+                    executeStep (options model.seed) stepValue
+                        |> (\gen ->
+                                Random.step gen model.seed
+                           )
+            in
+                { model | currIteration = model.currIteration + 1, stepValue_ = Just nextStepValue } ! []
 
 
 crossoverMealplans : MealPlan -> MealPlan -> MealPlan
