@@ -97,7 +97,12 @@ update msg model =
                                 Random.step gen nextSeed
                            )
             in
-                { model | currIteration = model.currIteration + 1, stepValue_ = Just nextStepValue } ! []
+                { model
+                    | currIteration = model.currIteration + 1
+                    , stepValue_ = Just nextStepValue
+                    , bestMealPlan = StepValue.solution nextStepValue
+                }
+                    ! []
 
         RunStep stepValue _ ->
             let
@@ -107,7 +112,12 @@ update msg model =
                                 Random.step gen model.seed
                            )
             in
-                { model | currIteration = model.currIteration + 1, stepValue_ = Just nextStepValue } ! []
+                { model
+                    | currIteration = model.currIteration + 1
+                    , stepValue_ = Just nextStepValue
+                    , bestMealPlan = StepValue.solution nextStepValue
+                }
+                    ! []
 
 
 crossoverMealplans : MealPlan -> MealPlan -> MealPlan
