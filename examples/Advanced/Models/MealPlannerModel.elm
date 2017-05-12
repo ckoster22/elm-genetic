@@ -130,219 +130,172 @@ getPenaltyForDay day =
             0
 
 
-mutateDay : Day -> Seed -> ( Day, Seed )
-mutateDay day seed =
+mutateDay : Day -> Generator Day
+mutateDay day =
     case day of
         Breakfast meal ->
-            mutateBreakfastOnlyDay meal seed
+            mutateBreakfastOnlyDay meal
 
         Lunch meal ->
-            mutateLunchOnlyDay meal seed
+            mutateLunchOnlyDay meal
 
         Dinner meal ->
-            mutateDinnerOnlyDay meal seed
+            mutateDinnerOnlyDay meal
 
         BreakfastLunch meal meal2 ->
-            mutateBreakfastLunchDay meal meal2 seed
+            mutateBreakfastLunchDay meal meal2
 
         BreakfastDinner meal meal2 ->
-            mutateBreakfastDinnerDay meal meal2 seed
+            mutateBreakfastDinnerDay meal meal2
 
         LunchDinner meal meal2 ->
-            mutateLunchDinnerDay meal meal2 seed
+            mutateLunchDinnerDay meal meal2
 
         AllMeals meal meal2 meal3 ->
-            mutateAllMealsDay meal meal2 meal3 seed
+            mutateAllMealsDay meal meal2 meal3
 
         NoMeals ->
-            mutateNoMealsDay seed
+            mutateNoMealsDay
 
 
-mutateBreakfastOnlyDay : Meal -> Seed -> ( Day, Seed )
-mutateBreakfastOnlyDay meal seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( NoMeals, nextSeed )
-        else if actionId == 1 then
-            ( Lunch meal, nextSeed )
-        else if actionId == 2 then
-            ( Dinner meal, nextSeed )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastLunch meal randomMeal, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastDinner meal randomMeal, nextSeed2 )
-                   )
+mutateBreakfastOnlyDay : Meal -> Generator Day
+mutateBreakfastOnlyDay meal =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                NoMeals
+            else if actionId == 1 then
+                Lunch meal
+            else if actionId == 2 then
+                Dinner meal
+            else if actionId == 3 then
+                BreakfastLunch meal randomMeal
+            else
+                BreakfastDinner meal randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateLunchOnlyDay : Meal -> Seed -> ( Day, Seed )
-mutateLunchOnlyDay meal seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( NoMeals, nextSeed )
-        else if actionId == 1 then
-            ( Breakfast meal, nextSeed )
-        else if actionId == 2 then
-            ( Dinner meal, nextSeed )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastLunch meal randomMeal, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( LunchDinner meal randomMeal, nextSeed2 )
-                   )
+mutateLunchOnlyDay : Meal -> Generator Day
+mutateLunchOnlyDay meal =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                NoMeals
+            else if actionId == 1 then
+                Breakfast meal
+            else if actionId == 2 then
+                Dinner meal
+            else if actionId == 3 then
+                BreakfastLunch meal randomMeal
+            else
+                LunchDinner meal randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateDinnerOnlyDay : Meal -> Seed -> ( Day, Seed )
-mutateDinnerOnlyDay meal seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( NoMeals, nextSeed )
-        else if actionId == 1 then
-            ( Breakfast meal, nextSeed )
-        else if actionId == 2 then
-            ( Lunch meal, nextSeed )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( LunchDinner meal randomMeal, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastDinner meal randomMeal, nextSeed2 )
-                   )
+mutateDinnerOnlyDay : Meal -> Generator Day
+mutateDinnerOnlyDay meal =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                NoMeals
+            else if actionId == 1 then
+                Breakfast meal
+            else if actionId == 2 then
+                Lunch meal
+            else if actionId == 3 then
+                LunchDinner meal randomMeal
+            else
+                BreakfastDinner meal randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateBreakfastLunchDay : Meal -> Meal -> Seed -> ( Day, Seed )
-mutateBreakfastLunchDay meal meal2 seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( Breakfast meal, nextSeed )
-        else if actionId == 1 then
-            ( Lunch meal2, nextSeed )
-        else if actionId == 2 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastLunch meal randomMeal, nextSeed2 )
-                   )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastLunch randomMeal meal2, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( AllMeals randomMeal meal2 randomMeal, nextSeed2 )
-                   )
+mutateBreakfastLunchDay : Meal -> Meal -> Generator Day
+mutateBreakfastLunchDay meal meal2 =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                Breakfast meal
+            else if actionId == 1 then
+                Lunch meal2
+            else if actionId == 2 then
+                BreakfastLunch meal randomMeal
+            else if actionId == 3 then
+                BreakfastLunch randomMeal meal2
+            else
+                AllMeals randomMeal meal2 randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateBreakfastDinnerDay : Meal -> Meal -> Seed -> ( Day, Seed )
-mutateBreakfastDinnerDay meal meal2 seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( Breakfast meal, nextSeed )
-        else if actionId == 1 then
-            ( Dinner meal2, nextSeed )
-        else if actionId == 2 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastDinner meal randomMeal, nextSeed2 )
-                   )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( BreakfastDinner randomMeal meal2, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( AllMeals randomMeal meal2 randomMeal, nextSeed2 )
-                   )
+mutateBreakfastDinnerDay : Meal -> Meal -> Generator Day
+mutateBreakfastDinnerDay meal meal2 =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                Breakfast meal
+            else if actionId == 1 then
+                Dinner meal2
+            else if actionId == 2 then
+                BreakfastDinner meal randomMeal
+            else if actionId == 3 then
+                BreakfastDinner randomMeal meal2
+            else
+                AllMeals randomMeal meal2 randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateLunchDinnerDay : Meal -> Meal -> Seed -> ( Day, Seed )
-mutateLunchDinnerDay meal meal2 seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 4) seed
-    in
-        if actionId == 0 then
-            ( Lunch meal, nextSeed )
-        else if actionId == 1 then
-            ( Dinner meal2, nextSeed )
-        else if actionId == 2 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( LunchDinner meal randomMeal, nextSeed2 )
-                   )
-        else if actionId == 3 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( LunchDinner randomMeal meal2, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( AllMeals randomMeal meal2 randomMeal, nextSeed2 )
-                   )
+mutateLunchDinnerDay : Meal -> Meal -> Generator Day
+mutateLunchDinnerDay meal meal2 =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                Lunch meal
+            else if actionId == 1 then
+                Dinner meal2
+            else if actionId == 2 then
+                LunchDinner meal randomMeal
+            else if actionId == 3 then
+                LunchDinner randomMeal meal2
+            else
+                AllMeals randomMeal meal2 randomMeal
+        )
+        (Random.int 0 4)
+        randomMealGenerator
 
 
-mutateAllMealsDay : Meal -> Meal -> Meal -> Seed -> ( Day, Seed )
-mutateAllMealsDay meal meal2 meal3 seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 2) seed
-    in
-        if actionId == 0 then
-            ( LunchDinner meal2 meal3, nextSeed )
-        else if actionId == 1 then
-            ( BreakfastDinner meal meal3, nextSeed )
-        else
-            ( BreakfastLunch meal meal2, nextSeed )
+mutateAllMealsDay : Meal -> Meal -> Meal -> Generator Day
+mutateAllMealsDay meal meal2 meal3 =
+    Random.int 0 2
+        |> Random.map
+            (\actionId ->
+                if actionId == 0 then
+                    LunchDinner meal2 meal3
+                else if actionId == 1 then
+                    BreakfastDinner meal meal3
+                else
+                    BreakfastLunch meal meal2
+            )
 
 
-mutateNoMealsDay : Seed -> ( Day, Seed )
-mutateNoMealsDay seed =
-    let
-        ( actionId, nextSeed ) =
-            Random.step (Random.int 0 2) seed
-    in
-        if actionId == 0 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( Breakfast randomMeal, nextSeed2 )
-                   )
-        else if actionId == 1 then
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( Lunch randomMeal, nextSeed2 )
-                   )
-        else
-            getRandomMeal nextSeed
-                |> (\( randomMeal, nextSeed2 ) ->
-                        ( Dinner randomMeal, nextSeed2 )
-                   )
+mutateNoMealsDay : Generator Day
+mutateNoMealsDay =
+    Random.map2
+        (\actionId randomMeal ->
+            if actionId == 0 then
+                Breakfast randomMeal
+            else if actionId == 1 then
+                Lunch randomMeal
+            else
+                Dinner randomMeal
+        )
+        (Random.int 0 2)
+        randomMealGenerator

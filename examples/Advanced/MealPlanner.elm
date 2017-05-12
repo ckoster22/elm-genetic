@@ -122,47 +122,54 @@ evaluateMealPlan mealPlan =
         max 0 (100 - totalPenalty)
 
 
-mutateMealplan : Seed -> MealPlan -> ( MealPlan, Seed )
-mutateMealplan seed mealPlan =
-    let
-        ( randDay, seed2 ) =
-            Random.step (Random.int 1 7) seed
-    in
-        if randDay == 1 then
-            mutateDay mealPlan.sunday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | sunday = day }, nextSeed )
-                   )
-        else if randDay == 2 then
-            mutateDay mealPlan.monday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | monday = day }, nextSeed )
-                   )
-        else if randDay == 3 then
-            mutateDay mealPlan.tuesday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | tuesday = day }, nextSeed )
-                   )
-        else if randDay == 4 then
-            mutateDay mealPlan.wednesday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | wednesday = day }, nextSeed )
-                   )
-        else if randDay == 5 then
-            mutateDay mealPlan.thursday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | thursday = day }, nextSeed )
-                   )
-        else if randDay == 6 then
-            mutateDay mealPlan.friday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | friday = day }, nextSeed )
-                   )
-        else
-            mutateDay mealPlan.saturday seed2
-                |> (\( day, nextSeed ) ->
-                        ( { mealPlan | saturday = day }, nextSeed )
-                   )
+mutateMealplan : MealPlan -> Generator MealPlan
+mutateMealplan mealPlan =
+    Random.int 1 7
+        |> Random.andThen
+            (\randDay ->
+                if randDay == 1 then
+                    mutateDay mealPlan.sunday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | sunday = day }
+                            )
+                else if randDay == 2 then
+                    mutateDay mealPlan.monday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | monday = day }
+                            )
+                else if randDay == 3 then
+                    mutateDay mealPlan.tuesday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | tuesday = day }
+                            )
+                else if randDay == 4 then
+                    mutateDay mealPlan.wednesday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | wednesday = day }
+                            )
+                else if randDay == 5 then
+                    mutateDay mealPlan.thursday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | thursday = day }
+                            )
+                else if randDay == 6 then
+                    mutateDay mealPlan.friday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | friday = day }
+                            )
+                else
+                    mutateDay mealPlan.saturday
+                        |> Random.map
+                            (\day ->
+                                { mealPlan | saturday = day }
+                            )
+            )
 
 
 view : MealPlan -> Html Msg

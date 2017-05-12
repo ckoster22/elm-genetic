@@ -2,13 +2,12 @@ module Models.Meal
     exposing
         ( Meal
         , randomMealGenerator
-        , getRandomMeal
         , getBreakfastPenaltyFor
         , getLunchPenaltyFor
         , getDinnerPenaltyFor
         )
 
-import Random exposing (Generator, Seed)
+import Random exposing (Generator)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 
 
@@ -58,11 +57,6 @@ randomRecipeGenerator =
             NonemptyList.get index allRecipes
         )
         (Random.int 0 (NonemptyList.length allRecipes - 1))
-
-
-getRandomMeal : Seed -> ( Meal, Seed )
-getRandomMeal seed =
-    Random.step randomMealGenerator seed
 
 
 getBreakfastPenaltyFor : Meal -> Float
