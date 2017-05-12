@@ -1,4 +1,4 @@
-module StepValue
+module Genetic.StepValue
     exposing
         ( StepValue
         , new

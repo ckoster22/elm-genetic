@@ -14,7 +14,7 @@ Sometimes you may want more control than to run everything all at once. Perhaps 
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
 import Random exposing (Generator, Seed)
-import StepValue exposing (StepValue)
+import Genetic.StepValue as StepValue exposing (StepValue)
 
 
 population_size : Int
