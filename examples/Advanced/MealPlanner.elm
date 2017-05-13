@@ -9,6 +9,7 @@ import Models.Meal exposing (..)
 import Html exposing (Html, div, button, span, text)
 import Html.Attributes exposing (style)
 import Time exposing (Time)
+import List.Nonempty as NonemptyList exposing (Nonempty)
 
 
 main : Program Never Model Msg
@@ -31,9 +32,14 @@ type alias Model =
     }
 
 
+max_iterations : Int
+max_iterations =
+    50
+
+
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    if model.currIteration < 100 then
+    if model.currIteration < max_iterations then
         case model.stepValue_ of
             Just stepValue ->
                 Time.every (100 * Time.millisecond) <| RunStep stepValue
@@ -85,7 +91,7 @@ options seed =
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case Debug.log "msg" msg of
+    case msg of
         RunFirstStep ->
             let
                 ( initialStepValue, nextSeed ) =
@@ -101,6 +107,7 @@ update msg model =
                     | currIteration = model.currIteration + 1
                     , stepValue_ = Just nextStepValue
                     , bestMealPlan = StepValue.solution nextStepValue
+                    , seed = nextSeed2
                 }
                     ! []
 
@@ -111,11 +118,19 @@ update msg model =
                         |> (\gen ->
                                 Random.step gen model.seed
                            )
+
+                -- _ =
+                --     Debug.log "penalty" <| StepValue.points nextStepValue
+                -- _ =
+                --     Debug.log "before" <| .monday <| .dna <| NonemptyList.head <| StepValue.solutions stepValue
+                -- _ =
+                --     Debug.log "after" <| .monday <| .dna <| NonemptyList.head <| StepValue.solutions nextStepValue
             in
                 { model
                     | currIteration = model.currIteration + 1
                     , stepValue_ = Just nextStepValue
                     , bestMealPlan = StepValue.solution nextStepValue
+                    , seed = nextSeed2
                 }
                     ! []
 
@@ -137,11 +152,8 @@ crossoverMealplans mealplan1 mealplan2 =
 
 
 isDoneEvolving : MealPlan -> Float -> Int -> Bool
-isDoneEvolving mealPlan _ generations =
+isDoneEvolving mealPlan penalty generations =
     let
-        _ =
-            Debug.log "" mealPlan
-
         _ =
             Debug.log "gen" generations
     in

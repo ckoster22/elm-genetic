@@ -2,6 +2,7 @@ module Models.MealPlannerModel exposing (..)
 
 import Models.Meal exposing (..)
 import Random exposing (Generator, Seed)
+import Penalties exposing (..)
 
 
 type Day

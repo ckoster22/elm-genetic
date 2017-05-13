@@ -2,9 +2,8 @@ module Models.Meal
     exposing
         ( Meal
         , randomMealGenerator
-        , getBreakfastPenaltyFor
-        , getLunchPenaltyFor
-        , getDinnerPenaltyFor
+        , MealType(..)
+          -- TODO don't expose this
         )
 
 import Random exposing (Generator)
@@ -57,48 +56,6 @@ randomRecipeGenerator =
             NonemptyList.get index allRecipes
         )
         (Random.int 0 (NonemptyList.length allRecipes - 1))
-
-
-getBreakfastPenaltyFor : Meal -> Float
-getBreakfastPenaltyFor meal =
-    case meal.recipe.mealType of
-        BreakfastType ->
-            0
-
-        BreakfastLunchType ->
-            0
-
-        _ ->
-            8
-
-
-getLunchPenaltyFor : Meal -> Float
-getLunchPenaltyFor meal =
-    case meal.recipe.mealType of
-        LunchType ->
-            0
-
-        BreakfastLunchType ->
-            0
-
-        LunchDinnerType ->
-            0
-
-        _ ->
-            8
-
-
-getDinnerPenaltyFor : Meal -> Float
-getDinnerPenaltyFor meal =
-    case meal.recipe.mealType of
-        DinnerType ->
-            0
-
-        LunchDinnerType ->
-            0
-
-        _ ->
-            8
 
 
 allRecipes : Nonempty Recipe
