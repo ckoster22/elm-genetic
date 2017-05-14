@@ -40,6 +40,9 @@ getBreakfastMeal day =
         BreakfastLunch meal _ ->
             Just meal
 
+        BreakfastDinner meal _ ->
+            Just meal
+
         _ ->
             Nothing
 
@@ -63,6 +66,9 @@ getLunchMeal day =
 getDinnerMeal : Day -> Maybe Meal
 getDinnerMeal day =
     case day of
+        BreakfastDinner _ meal ->
+            Just meal
+
         LunchDinner _ meal ->
             Just meal
 
@@ -121,13 +127,25 @@ getPenaltyForDay day =
         Breakfast meal ->
             getBreakfastPenaltyFor meal
 
+        BreakfastLunch meal meal2 ->
+            (getBreakfastPenaltyFor meal) + (getLunchPenaltyFor meal2)
+
+        BreakfastDinner meal meal2 ->
+            (getBreakfastPenaltyFor meal) + (getDinnerPenaltyFor meal2)
+
         Lunch meal ->
             getLunchPenaltyFor meal
+
+        LunchDinner meal meal2 ->
+            (getLunchPenaltyFor meal) + (getDinnerPenaltyFor meal2)
 
         Dinner meal ->
             getDinnerPenaltyFor meal
 
-        _ ->
+        AllMeals meal meal2 meal3 ->
+            (getBreakfastPenaltyFor meal) + (getLunchPenaltyFor meal2) + (getDinnerPenaltyFor meal3)
+
+        NoMeals ->
             0
 
 
@@ -171,10 +189,12 @@ mutateBreakfastOnlyDay meal =
                 Dinner meal
             else if actionId == 3 then
                 BreakfastLunch meal randomMeal
-            else
+            else if actionId == 4 then
                 BreakfastDinner meal randomMeal
+            else
+                Breakfast randomMeal
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
@@ -190,10 +210,12 @@ mutateLunchOnlyDay meal =
                 Dinner meal
             else if actionId == 3 then
                 BreakfastLunch meal randomMeal
-            else
+            else if actionId == 4 then
                 LunchDinner meal randomMeal
+            else
+                Lunch randomMeal
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
@@ -209,10 +231,12 @@ mutateDinnerOnlyDay meal =
                 Lunch meal
             else if actionId == 3 then
                 LunchDinner meal randomMeal
-            else
+            else if actionId == 4 then
                 BreakfastDinner meal randomMeal
+            else
+                Dinner randomMeal
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
@@ -228,10 +252,12 @@ mutateBreakfastLunchDay meal meal2 =
                 BreakfastLunch meal randomMeal
             else if actionId == 3 then
                 BreakfastLunch randomMeal meal2
-            else
+            else if actionId == 4 then
                 AllMeals randomMeal meal2 randomMeal
+            else
+                BreakfastLunch randomMeal meal2
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
@@ -247,10 +273,12 @@ mutateBreakfastDinnerDay meal meal2 =
                 BreakfastDinner meal randomMeal
             else if actionId == 3 then
                 BreakfastDinner randomMeal meal2
-            else
+            else if actionId == 4 then
                 AllMeals randomMeal meal2 randomMeal
+            else
+                BreakfastDinner randomMeal meal2
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
@@ -266,25 +294,35 @@ mutateLunchDinnerDay meal meal2 =
                 LunchDinner meal randomMeal
             else if actionId == 3 then
                 LunchDinner randomMeal meal2
-            else
+            else if actionId == 4 then
                 AllMeals randomMeal meal2 randomMeal
+            else
+                LunchDinner randomMeal meal2
         )
-        (Random.int 0 4)
+        (Random.int 0 5)
         randomMealGenerator
 
 
 mutateAllMealsDay : Meal -> Meal -> Meal -> Generator Day
 mutateAllMealsDay meal meal2 meal3 =
-    Random.int 0 2
-        |> Random.map
-            (\actionId ->
-                if actionId == 0 then
-                    LunchDinner meal2 meal3
-                else if actionId == 1 then
-                    BreakfastDinner meal meal3
-                else
-                    BreakfastLunch meal meal2
-            )
+    Random.map3
+        (\actionId randMealNum randMeal ->
+            if actionId == 0 then
+                LunchDinner meal2 meal3
+            else if actionId == 1 then
+                BreakfastDinner meal meal3
+            else if actionId == 2 then
+                BreakfastLunch meal meal2
+            else if randMealNum == 1 then
+                AllMeals randMeal meal2 meal3
+            else if randMealNum == 2 then
+                AllMeals meal randMeal meal3
+            else
+                AllMeals meal meal2 randMeal
+        )
+        (Random.int 0 3)
+        (Random.int 1 3)
+        randomMealGenerator
 
 
 mutateNoMealsDay : Generator Day
