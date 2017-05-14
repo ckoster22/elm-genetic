@@ -1,14 +1,9 @@
-module Genetic exposing (evolveSolution, executeStep, generateInitialPopulation, Method(..))
+module Genetic exposing (evolveSolution, Method(..))
 
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
 @docs Method, evolveSolution
-
-# Advanced usage
-Sometimes you may want more control than to run everything all at once. Perhaps you want to perform some intermediate asynchronous processing such as rendering DOM or performing a side-effect. If so, the following functions are exposed for you to take the algorithm into your own hands.
-@docs executeStep, generateInitialPopulation
-
 -}
 
 import List.Nonempty as NonemptyList exposing (Nonempty)
@@ -24,7 +19,7 @@ population_size =
 
 half_population_size : Int
 half_population_size =
-    round <| toFloat population_size / 2
+    population_size // 2
 
 
 {-| For simple use cases the genetic algorithm will be doing one of two things:
@@ -148,19 +143,7 @@ generate seed generator =
     Random.step generator seed
 
 
-{-| TODO
--}
-executeStep :
-    { randomDnaGenerator : Generator dna
-    , evaluateSolution : dna -> Float
-    , crossoverDnas : dna -> dna -> dna
-    , mutateDna : dna -> Generator dna
-    , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
-    , method : Method
-    }
-    -> StepValue { dna : dna, points : Float } dna
-    -> Generator (StepValue { dna : dna, points : Float } dna)
+executeStep : Options dna -> StepValue { dna : dna, points : Float } dna -> Generator (StepValue { dna : dna, points : Float } dna)
 executeStep options stepValue =
     let
         population =
@@ -186,18 +169,7 @@ executeStep options stepValue =
                 )
 
 
-{-| TODO
--}
-generateInitialPopulation :
-    { randomDnaGenerator : Generator dna
-    , evaluateSolution : dna -> Float
-    , crossoverDnas : dna -> dna -> dna
-    , mutateDna : dna -> Generator dna
-    , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
-    , method : Method
-    }
-    -> ( StepValue { dna : dna, points : Float } dna, Seed )
+generateInitialPopulation : Options dna -> ( StepValue { dna : dna, points : Float } dna, Seed )
 generateInitialPopulation options =
     let
         ( initialGeneration, seed ) =
