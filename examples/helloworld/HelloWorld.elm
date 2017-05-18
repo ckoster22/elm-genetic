@@ -5,7 +5,7 @@ import Random exposing (Generator, Seed)
 import Char
 import Array
 import Task
-import Json.Decode as Decode exposing (decodeValue, field, int)
+import Json.Decode as Decode exposing (decodeValue, int)
 
 
 main : Program Decode.Value Model Msg
@@ -29,7 +29,7 @@ init : Decode.Value -> ( Model, Cmd Msg )
 init json =
     let
         initialSeed =
-            case (decodeValue (field "currentTimeInMillis" int) json) of
+            case (decodeValue int json) of
                 Ok seed ->
                     seed
 
@@ -38,7 +38,7 @@ init json =
 
         startThingsMsg =
             Task.succeed Nothing
-                |> Task.perform (\_ -> Begin)
+                |> Task.perform (always Begin)
     in
         { initialSeed = initialSeed } ! [ startThingsMsg ]
 
