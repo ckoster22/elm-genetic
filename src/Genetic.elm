@@ -23,8 +23,8 @@ half_population_size =
 
 
 {-| For simple use cases the genetic algorithm will be doing one of two things:
-  * Maximizing a score
-  * Minimizing a penalty or cost
+* Maximizing a score
+* Minimizing a penalty or cost
 
 Your `evaluateSolution` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
 -}
@@ -61,25 +61,23 @@ type alias Options dna =
 {-| Kicks off the genetic algorithm.
 
 There are a handful of callbacks required because the algorithm needs the following information:
-  * How to generate a random solution
-  * Given a potential solution, how should it be evaluated?
-  * How to breed two solutions
-  * Is the current best solution good enough?
-  * An initial random seed
-  * Are we maximizing a score or minimizing a penalty?
+* How to generate a random solution
+* Given a potential solution, how should it be evaluated?
+* How to breed two solutions
+* Is the current best solution good enough?
+* An initial random seed
+* Are we maximizing a score or minimizing a penalty?
 
 These details are captured in the following record:
 
-``` elm
-{ randomDnaGenerator : Generator dna
-, evaluateSolution : dna -> Float
-, crossoverDnas : dna -> dna -> dna
-, mutateDna : dna -> Generator dna
-, isDoneEvolving : dna -> Float -> Int -> Bool
-, initialSeed : Seed
-, method : Method
-}
-```
+    { randomDnaGenerator : Generator dna
+    , evaluateSolution : dna -> Float
+    , crossoverDnas : dna -> dna -> dna
+    , mutateDna : dna -> Generator dna
+    , isDoneEvolving : dna -> Float -> Int -> Bool
+    , initialSeed : Seed
+    , method : Method
+    }
 
 The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
 
