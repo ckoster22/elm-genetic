@@ -94,7 +94,6 @@ evolveSolution :
     , initialSeed : Seed
     , method : Method
     }
-    -- -> ( StepValue { dna : dna, points : Float } dna, Seed )
     -> ( dna, Float, Seed )
 evolveSolution options =
     let
