@@ -94,7 +94,8 @@ evolveSolution :
     , initialSeed : Seed
     , method : Method
     }
-    -> ( StepValue { dna : dna, points : Float } dna, Seed )
+    -- -> ( StepValue { dna : dna, points : Float } dna, Seed )
+    -> ( dna, Float, Seed )
 evolveSolution options =
     let
         ( initialStepValue, seed2 ) =
@@ -108,7 +109,7 @@ evolveSolution options =
             in
                 recursivelyEvolve 0 options stepValue seed3
     in
-        ( stepValue, seed3 )
+        ( StepValue.solution stepValue, StepValue.points stepValue, seed3 )
 
 
 recursivelyEvolve : Int -> Options dna -> StepValue { dna : dna, points : Float } dna -> Seed -> ( StepValue { dna : dna, points : Float } dna, Seed )

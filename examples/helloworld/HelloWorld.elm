@@ -48,7 +48,7 @@ update msg model =
     case msg of
         Begin ->
             let
-                _ =
+                ( bestSolution, penalty, _ ) =
                     evolveSolution
                         { randomDnaGenerator = randomDnaGenerator
                         , evaluateSolution = evaluateSolution
@@ -58,6 +58,9 @@ update msg model =
                         , initialSeed = Random.initialSeed model.initialSeed
                         , method = MinimizePenalty
                         }
+
+                _ =
+                    Debug.log "Evolved" <| String.fromList <| List.map Char.fromCode bestSolution
             in
                 model ! []
 
