@@ -145,33 +145,30 @@ There are a lot of opinions on mutation rates.. but I've seen 3% - 10% work well
 Since "Hello world" is 11 characters in length we're going to mutate only one letter. 1 / 11 = 9.1% which is in the 3% to 10% range.
 
 ``` elm
-mutateDna : Seed -> Dna -> ( Dna, Seed )
-mutateDna seed dna =
+mutateDna : Dna -> Generator Dna
+mutateDna dna =
     let
-        ( randomIndex, seed2 ) =
-            Random.step (Random.int 0 (String.length target - 1)) seed
+        randIndexGenerator =
+            Random.int 0 (String.length target - 1)
 
-        ( randomAsciiCode, seed3 ) =
+        randAsciiCodeGenerator =
             Random.int 1 53
                 |> Random.map asciiCodeMapper
-                |> (\gen ->
-                        Random.step gen seed2
-                   )
-
-        mutatedDna =
-            dna
-                |> List.indexedMap
-                    (\index asciiCode ->
-                        if index == randomIndex then
-                            randomAsciiCode
-                        else
-                            asciiCode
-                    )
     in
-        ( mutatedDna, seed3 )
+        Random.map2
+            (\randomIndex randomAsciiCode ->
+                dna
+                    |> List.indexedMap
+                        (\index asciiCode ->
+                            if index == randomIndex then
+                                randomAsciiCode
+                            else
+                                asciiCode
+                        )
+            )
+            randIndexGenerator
+            randAsciiCodeGenerator
 ```
-
-Notice that a seed is passed into `crossoverDnas` and a new seed is also returned from the function.
 
 ### Define a function to stop the recursion
 
@@ -210,9 +207,7 @@ evolveSolution
 This initial seed is acquired from the current time in Javascript.
 
 ``` js
-Elm.HelloWorld.worker({
-    currentTimeInMillis: (new Date()).getTime() // Used as the seed
-});
+Elm.HelloWorld.worker((new Date()).getTime());
 ```
 
 It might be a good idea to record the seed somewhere each time you run the program as it can be very useful when debugging to run the program again with the exact same random values.
