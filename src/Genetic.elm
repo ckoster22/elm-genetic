@@ -1,15 +1,16 @@
-module Genetic exposing (evolveSolution, Method(..))
+module Genetic exposing (Method(..), evolveSolution)
 
 {-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
 invoked with the appropriate callbacks it will attempt to find an optimal solution.
 
 @docs Method, evolveSolution
+
 -}
 
+import Genetic.StepValue as StepValue exposing (StepValue)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
 import Random exposing (Generator, Seed)
-import Genetic.StepValue as StepValue exposing (StepValue)
 
 
 population_size : Int
@@ -23,10 +24,12 @@ half_population_size =
 
 
 {-| For simple use cases the genetic algorithm will be doing one of two things:
-* Maximizing a score
-* Minimizing a penalty or cost
+
+  - Maximizing a score
+  - Minimizing a penalty or cost
 
 Your `evaluateSolution` function is used to assign a value to an entire generation of possible solutions. `Method` tells the algorithm whether to keep and "breed" the solutions with a higher value or a lower value.
+
 -}
 type Method
     = MaximizeScore
@@ -61,12 +64,13 @@ type alias Options dna =
 {-| Kicks off the genetic algorithm.
 
 There are a handful of callbacks required because the algorithm needs the following information:
-* How to generate a random solution
-* Given a potential solution, how should it be evaluated?
-* How to breed two solutions
-* Is the current best solution good enough?
-* An initial random seed
-* Are we maximizing a score or minimizing a penalty?
+
+  - How to generate a random solution
+  - Given a potential solution, how should it be evaluated?
+  - How to breed two solutions
+  - Is the current best solution good enough?
+  - An initial random seed
+  - Are we maximizing a score or minimizing a penalty?
 
 These details are captured in the following record:
 
@@ -82,6 +86,7 @@ These details are captured in the following record:
 The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
 
 When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateSolution`, and the next random `Seed` to be used in subsequent `Random` calls.
+
 -}
 evolveSolution :
     { randomDnaGenerator : Generator dna
@@ -104,9 +109,9 @@ evolveSolution options =
                     executeStep options initialStepValue
                         |> generate seed2
             in
-                recursivelyEvolve 0 options stepValue seed3
+            recursivelyEvolve 0 options stepValue seed3
     in
-        ( StepValue.solution stepValue, StepValue.points stepValue, seed3 )
+    ( StepValue.solution stepValue, StepValue.points stepValue, seed3 )
 
 
 recursivelyEvolve : Int -> Options dna -> StepValue { dna : dna, points : Float } dna -> Seed -> ( StepValue { dna : dna, points : Float } dna, Seed )
@@ -121,19 +126,19 @@ recursivelyEvolve numGenerations options stepValue seed =
         population =
             StepValue.solutions stepValue
     in
-        if (options.isDoneEvolving bestOrganismDna bestOrganismPoints numGenerations) then
-            ( stepValue, seed )
-        else
-            let
-                ( nextStepValue, nextSeed ) =
-                    executeStep options (StepValue.new population bestOrganismDna bestOrganismPoints)
-                        |> generate seed
-            in
-                recursivelyEvolve
-                    (numGenerations + 1)
-                    options
-                    nextStepValue
-                    nextSeed
+    if options.isDoneEvolving bestOrganismDna bestOrganismPoints numGenerations then
+        ( stepValue, seed )
+    else
+        let
+            ( nextStepValue, nextSeed ) =
+                executeStep options (StepValue.new population bestOrganismDna bestOrganismPoints)
+                    |> generate seed
+        in
+        recursivelyEvolve
+            (numGenerations + 1)
+            options
+            nextStepValue
+            nextSeed
 
 
 generate : Seed -> Generator a -> ( a, Seed )
@@ -160,11 +165,11 @@ executeStep options stepValue =
                 MinimizePenalty ->
                     NonemptyList.head sortedPopulation
     in
-        nextGenerationGenerator options population
-            |> Random.map
-                (\nextPopulation ->
-                    StepValue.new nextPopulation bestSolution.dna bestSolution.points
-                )
+    nextGenerationGenerator options population
+        |> Random.map
+            (\nextPopulation ->
+                StepValue.new nextPopulation bestSolution.dna bestSolution.points
+            )
 
 
 generateInitialPopulation : Options dna -> ( StepValue { dna : dna, points : Float } dna, Seed )
@@ -178,7 +183,7 @@ generateInitialPopulation options =
                     )
                 |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
     in
-        ( StepValue.new initialGeneration (NonemptyList.head initialGeneration |> .dna) 0, seed )
+    ( StepValue.new initialGeneration (NonemptyList.head initialGeneration |> .dna) 0, seed )
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)
@@ -197,11 +202,11 @@ nextGenerationGenerator options currPopulation =
                 MinimizePenalty ->
                     List.take half_population_size sortedPopulation
     in
-        bestOrganismsGenerator options bestHalfOfPopulation
-            |> Random.map
-                (\organismList ->
-                    organismList |> NonemptyList.fromList |> Maybe.withDefault currPopulation
-                )
+    bestOrganismsGenerator options bestHalfOfPopulation
+        |> Random.map
+            (\organismList ->
+                organismList |> NonemptyList.fromList |> Maybe.withDefault currPopulation
+            )
 
 
 constantGen : a -> Generator a
@@ -244,13 +249,13 @@ familyGenerator options parent1 parent2 =
                     else
                         parent2
     in
-        Random.map3
-            (\child1 child2 child3 ->
-                [ child1, child2, child3, bestParent ]
-            )
-            (childGenerator options parent1 parent2)
-            (childGenerator options parent1 parent2)
-            (childGenerator options parent1 parent2)
+    Random.map3
+        (\child1 child2 child3 ->
+            [ child1, child2, child3, bestParent ]
+        )
+        (childGenerator options parent1 parent2)
+        (childGenerator options parent1 parent2)
+        (childGenerator options parent1 parent2)
 
 
 childGenerator : Options dna -> Organism dna -> Organism dna -> Generator (Organism dna)
