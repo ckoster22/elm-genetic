@@ -1,11 +1,11 @@
 module HelloWorld exposing (main)
 
-import Genetic exposing (evolveSolution, Method(..))
-import Random exposing (Generator, Seed)
-import Char
 import Array
-import Task
+import Char
+import Genetic exposing (Method(..), evolveSolution)
 import Json.Decode as Decode exposing (decodeValue, int)
+import Random exposing (Generator, Seed)
+import Task
 
 
 main : Program Decode.Value Model Msg
@@ -13,7 +13,7 @@ main =
     Platform.programWithFlags
         { init = init
         , update = update
-        , subscriptions = (\_ -> Sub.none)
+        , subscriptions = \_ -> Sub.none
         }
 
 
@@ -29,7 +29,7 @@ init : Decode.Value -> ( Model, Cmd Msg )
 init json =
     let
         initialSeed =
-            case (decodeValue int json) of
+            case decodeValue int json of
                 Ok seed ->
                     seed
 
@@ -40,7 +40,7 @@ init json =
             Task.succeed Nothing
                 |> Task.perform (always Begin)
     in
-        { initialSeed = initialSeed } ! [ startThingsMsg ]
+    { initialSeed = initialSeed } ! [ startThingsMsg ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -62,7 +62,7 @@ update msg model =
                 _ =
                     Debug.log "Evolved" <| String.fromList <| List.map Char.fromCode bestSolution
             in
-                model ! []
+            model ! []
 
 
 type alias Dna =
@@ -82,7 +82,7 @@ target_ascii =
 
 crossover_split_index : Int
 crossover_split_index =
-    floor ((toFloat (String.length target)) / 2)
+    floor (toFloat (String.length target) / 2)
 
 
 max_iterations : Int
@@ -119,12 +119,12 @@ evaluateSolution dna =
                             |> Array.fromList
                             |> Array.get index
                 in
-                    case organismAscii_ of
-                        Just organismAscii ->
-                            ( points + abs (organismAscii - asciiCode), index + 1 )
+                case organismAscii_ of
+                    Just organismAscii ->
+                        ( points + abs (organismAscii - asciiCode), index + 1 )
 
-                        Nothing ->
-                            Debug.crash "Organism dna is too short!"
+                    Nothing ->
+                        Debug.crash "Organism dna is too short!"
             )
             ( 0, 0 )
         |> Tuple.first
@@ -137,7 +137,7 @@ crossoverDnas dna1 dna2 =
         ( dnaPart1, dnaPart2 ) =
             ( List.take crossover_split_index dna1, List.drop crossover_split_index dna2 )
     in
-        List.append dnaPart1 dnaPart2
+    List.append dnaPart1 dnaPart2
 
 
 mutateDna : Dna -> Generator Dna
@@ -150,19 +150,19 @@ mutateDna dna =
             Random.int 1 53
                 |> Random.map asciiCodeMapper
     in
-        Random.map2
-            (\randomIndex randomAsciiCode ->
-                dna
-                    |> List.indexedMap
-                        (\index asciiCode ->
-                            if index == randomIndex then
-                                randomAsciiCode
-                            else
-                                asciiCode
-                        )
-            )
-            randIndexGenerator
-            randAsciiCodeGenerator
+    Random.map2
+        (\randomIndex randomAsciiCode ->
+            dna
+                |> List.indexedMap
+                    (\index asciiCode ->
+                        if index == randomIndex then
+                            randomAsciiCode
+                        else
+                            asciiCode
+                    )
+        )
+        randIndexGenerator
+        randAsciiCodeGenerator
 
 
 isDoneEvolving : Dna -> Float -> Int -> Bool
@@ -171,4 +171,4 @@ isDoneEvolving bestDna bestDnaPoints numGenerations =
         _ =
             Debug.log "" (List.map Char.fromCode bestDna |> String.fromList)
     in
-        bestDnaPoints == 0 || numGenerations >= max_iterations
+    bestDnaPoints == 0 || numGenerations >= max_iterations
