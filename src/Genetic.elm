@@ -111,27 +111,24 @@ evolveSolution options =
             in
             recursivelyEvolve 0 options stepValue seed3
     in
-    ( StepValue.solution stepValue, StepValue.points stepValue, seed3 )
+    ( .dna <| StepValue.solution stepValue, StepValue.points stepValue, seed3 )
 
 
-recursivelyEvolve : Int -> Options dna -> StepValue { dna : dna, points : Float } dna -> Seed -> ( StepValue { dna : dna, points : Float } dna, Seed )
+recursivelyEvolve : Int -> Options dna -> StepValue { dna : dna, points : Float } -> Seed -> ( StepValue { dna : dna, points : Float }, Seed )
 recursivelyEvolve numGenerations options stepValue seed =
     let
-        bestOrganismDna =
+        bestOrganism =
             StepValue.solution stepValue
-
-        bestOrganismPoints =
-            StepValue.points stepValue
 
         population =
             StepValue.solutions stepValue
     in
-    if options.isDoneEvolving bestOrganismDna bestOrganismPoints numGenerations then
+    if options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations then
         ( stepValue, seed )
     else
         let
             ( nextStepValue, nextSeed ) =
-                executeStep options (StepValue.new population bestOrganismDna bestOrganismPoints)
+                executeStep options (StepValue.new population bestOrganism)
                     |> generate seed
         in
         recursivelyEvolve
@@ -146,7 +143,7 @@ generate seed generator =
     Random.step generator seed
 
 
-executeStep : Options dna -> StepValue { dna : dna, points : Float } dna -> Generator (StepValue { dna : dna, points : Float } dna)
+executeStep : Options dna -> StepValue { dna : dna, points : Float } -> Generator (StepValue { dna : dna, points : Float })
 executeStep options stepValue =
     let
         population =
@@ -168,22 +165,22 @@ executeStep options stepValue =
     nextGenerationGenerator options population
         |> Random.map
             (\nextPopulation ->
-                StepValue.new nextPopulation bestSolution.dna bestSolution.points
+                StepValue.new nextPopulation bestSolution
             )
 
 
-generateInitialPopulation : Options dna -> ( StepValue { dna : dna, points : Float } dna, Seed )
+generateInitialPopulation : Options dna -> ( StepValue { dna : dna, points : Float }, Seed )
 generateInitialPopulation options =
     let
         ( initialGeneration, seed ) =
             options.randomDnaGenerator
                 |> Random.map
-                    (\asciiCodes ->
-                        Organism asciiCodes <| options.evaluateSolution asciiCodes
+                    (\dna ->
+                        Organism dna <| options.evaluateSolution dna
                     )
                 |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
     in
-    ( StepValue.new initialGeneration (NonemptyList.head initialGeneration |> .dna) 0, seed )
+    ( StepValue.new initialGeneration (NonemptyList.head initialGeneration), seed )
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)

@@ -7,34 +7,38 @@ module Genetic.StepValue
         , solutions
         )
 
-import List.Nonempty as NonemptyList exposing (Nonempty)
+import List.Nonempty as Nonempty exposing (Nonempty)
 
 
-type StepValue a b
-    = StepValue (Nonempty a) b Float
+type StepValue a
+    = StepValue (Nonempty a) a
 
 
-new : Nonempty a -> b -> Float -> StepValue a b
-new solutions best bestPoints =
-    StepValue solutions best bestPoints
+type alias Pointed a =
+    { a | points : Float }
 
 
-solutions : StepValue a b -> Nonempty a
+new : Nonempty (Pointed a) -> Pointed a -> StepValue (Pointed a)
+new =
+    StepValue
+
+
+solutions : StepValue (Pointed a) -> Nonempty (Pointed a)
 solutions stepValue =
     case stepValue of
-        StepValue solutions _ _ ->
+        StepValue solutions _ ->
             solutions
 
 
-solution : StepValue a b -> b
+solution : StepValue (Pointed a) -> Pointed a
 solution stepValue =
     case stepValue of
-        StepValue _ solution _ ->
-            solution
+        StepValue solutions best ->
+            best
 
 
-points : StepValue a b -> Float
+points : StepValue (Pointed a) -> Float
 points stepValue =
     case stepValue of
-        StepValue _ _ points ->
-            points
+        StepValue _ best ->
+            best.points

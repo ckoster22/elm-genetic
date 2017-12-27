@@ -1,6 +1,6 @@
-module NonemptyHelper exposing (randomNonemptyList)
+module NonemptyHelper exposing (fromHeadRest, randomNonemptyList)
 
-import List.Nonempty as NonemptyList exposing (Nonempty)
+import List.Nonempty as Nonempty exposing (Nonempty)
 import Random exposing (Generator, Seed)
 
 
@@ -18,14 +18,24 @@ constructNonemptyFromHead : a -> Int -> ( List a, Seed ) -> ( Nonempty a, Seed )
 constructNonemptyFromHead thing size ( things, seed ) =
     let
         headList =
-            NonemptyList.fromElement thing
+            Nonempty.fromElement thing
 
         entireList =
             List.foldl
                 (\item nonemptyList ->
-                    NonemptyList.cons item nonemptyList
+                    Nonempty.cons item nonemptyList
                 )
                 headList
                 things
     in
     ( entireList, seed )
+
+
+fromHeadRest : a -> List a -> Nonempty a
+fromHeadRest head rest =
+    List.foldl
+        (\item nonemptyList ->
+            Nonempty.cons item nonemptyList
+        )
+        (Nonempty.fromElement head)
+        rest
