@@ -1,6 +1,6 @@
 module Genetic.StepValue
     exposing
-        ( Pointed
+        ( PointedDna
         , StepValue
         , new
         , points
@@ -15,30 +15,32 @@ type StepValue a
     = StepValue (Nonempty a) a
 
 
-type alias Pointed a =
-    { a | points : Float }
+type alias PointedDna dna =
+    { dna : dna
+    , points : Float
+    }
 
 
-new : Nonempty (Pointed a) -> Pointed a -> StepValue (Pointed a)
+new : Nonempty (PointedDna a) -> PointedDna a -> StepValue (PointedDna a)
 new =
     StepValue
 
 
-solutions : StepValue (Pointed a) -> Nonempty (Pointed a)
+solutions : StepValue (PointedDna a) -> Nonempty (PointedDna a)
 solutions stepValue =
     case stepValue of
         StepValue solutions _ ->
             solutions
 
 
-solution : StepValue (Pointed a) -> Pointed a
+solution : StepValue (PointedDna a) -> PointedDna a
 solution stepValue =
     case stepValue of
         StepValue solutions best ->
             best
 
 
-points : StepValue (Pointed a) -> Float
+points : StepValue (PointedDna a) -> Float
 points stepValue =
     case stepValue of
         StepValue _ best ->

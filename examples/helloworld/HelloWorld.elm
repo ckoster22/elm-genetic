@@ -2,7 +2,7 @@ module HelloWorld exposing (main)
 
 import Array
 import Char
-import Genetic exposing (Method(..), evolveSolution)
+import Genetic exposing (Method(..), solutionGenerator)
 import Json.Decode as Decode exposing (decodeValue, int)
 import Random exposing (Generator, Seed)
 import Task
@@ -48,8 +48,8 @@ update msg model =
     case msg of
         Begin ->
             let
-                solutionGenerator =
-                    evolveSolution
+                generator =
+                    solutionGenerator
                         { randomDnaGenerator = randomDnaGenerator
                         , evaluateSolution = evaluateSolution
                         , crossoverDnas = crossoverDnas
@@ -59,7 +59,7 @@ update msg model =
                         }
             in
             Random.initialSeed model.initialSeed
-                |> Random.step solutionGenerator
+                |> Random.step generator
                 |> Tuple.first
                 |> Tuple.first
                 |> List.map Char.fromCode

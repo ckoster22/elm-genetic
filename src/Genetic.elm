@@ -10,7 +10,7 @@ Note - This generator has a recursive structure and will block the thread until 
 
 -}
 
-import Genetic.StepValue as StepValue exposing (Pointed, StepValue)
+import Genetic.StepValue as StepValue exposing (PointedDna, StepValue)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
 import Random exposing (Generator)
@@ -106,7 +106,7 @@ solutionGenerator options =
             )
 
 
-recursivelyEvolve : Int -> Options dna -> Generator (StepValue (Pointed { dna : dna })) -> Generator (StepValue (Pointed { dna : dna }))
+recursivelyEvolve : Int -> Options dna -> Generator (StepValue (PointedDna dna)) -> Generator (StepValue (PointedDna dna))
 recursivelyEvolve numGenerations options stepValueGenerator =
     stepValueGenerator
         |> Random.andThen
@@ -126,7 +126,7 @@ recursivelyEvolve numGenerations options stepValueGenerator =
             )
 
 
-executeStep : Options dna -> StepValue (Pointed { dna : dna }) -> Generator (StepValue (Pointed { dna : dna }))
+executeStep : Options dna -> StepValue (PointedDna dna) -> Generator (StepValue (PointedDna dna))
 executeStep options stepValue =
     let
         population =
@@ -152,7 +152,7 @@ executeStep options stepValue =
             )
 
 
-initialPopulationGenerator : Options dna -> Generator (StepValue (Pointed { dna : dna }))
+initialPopulationGenerator : Options dna -> Generator (StepValue (PointedDna dna))
 initialPopulationGenerator { randomDnaGenerator, method } =
     Random.list population_size randomDnaGenerator
         |> Random.map
@@ -173,7 +173,7 @@ initialPoints method =
             toFloat Random.minInt
 
 
-toStepValue : List (Pointed { dna : dna }) -> StepValue (Pointed { dna : dna })
+toStepValue : List (PointedDna dna) -> StepValue (PointedDna dna)
 toStepValue pointedDna =
     case pointedDna of
         head :: rest ->
