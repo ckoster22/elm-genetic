@@ -88,7 +88,7 @@ type IntermediateValue dna
     = IntermediateValue (StepValue (PointedDna dna))
 
 
-{-| TODO
+{-| Returns a `dna` for a given `IntermediateValue`
 -}
 dnaFromValue : IntermediateValue a -> a
 dnaFromValue (IntermediateValue stepValue) =
