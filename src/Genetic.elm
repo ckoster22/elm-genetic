@@ -1,4 +1,4 @@
-module Genetic exposing (Method(..), solutionGenerator)
+module Genetic exposing (IntermediateValue, Method(..), Options, executeInitialStep, executeStep, solutionGenerator)
 
 {-| An implementation of a genetic algorithm. A single function `solutionGenerator` is exposed which will
 produce a generator that can be used to evolve a "good enough" solution.
@@ -6,7 +6,7 @@ produce a generator that can be used to evolve a "good enough" solution.
 Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
 `True`.
 
-@docs Method, solutionGenerator
+@docs IntermediateValue, Method, Options, solutionGenerator, executeInitialStep, executeStep
 
 -}
 
@@ -53,19 +53,7 @@ type Generation dna
     = Generation (Nonempty (Organism dna))
 
 
-type alias Options dna =
-    { randomDnaGenerator : Generator dna
-    , evaluateSolution : dna -> Float
-    , crossoverDnas : dna -> dna -> dna
-    , mutateDna : dna -> Generator dna
-    , isDoneEvolving : dna -> Float -> Int -> Bool
-    , method : Method
-    }
-
-
-{-| Kicks off the genetic algorithm.
-
-There are a handful of functions required because the algorithm needs the following information:
+{-| There are a handful of functions required because the algorithm needs the following information:
 
   - How to generate a random solution
   - Given a potential solution, how should it be evaluated?
@@ -83,12 +71,8 @@ These details are captured in the following record:
     , method : Method
     }
 
-The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
-
-When the algorithm is finished it'll return the best solution (dna) it could find and the value associated with that solution from `evaluateSolution`.
-
 -}
-solutionGenerator :
+type alias Options dna =
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
@@ -96,21 +80,36 @@ solutionGenerator :
     , isDoneEvolving : dna -> Float -> Int -> Bool
     , method : Method
     }
-    -> Generator ( dna, Float )
+
+
+{-| An intermediate value provided between each execute step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
+-}
+type IntermediateValue dna
+    = IntermediateValue (StepValue (PointedDna dna))
+
+
+{-| Produces a generator that runs the entire genetic algorithm. Note: This can be very slow! Put a max iterations in your `isDoneEvolving` function!
+
+The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
+
+When the algorithm is finished it'll return the best solution (dna) it could find and the value associated with that solution from `evaluateSolution`.
+
+-}
+solutionGenerator : Options dna -> Generator ( dna, Float )
 solutionGenerator options =
-    initialPopulationGenerator options
+    executeInitialStep options
         |> recursivelyEvolve 0 options
         |> Random.map
-            (\stepValue ->
+            (\(IntermediateValue stepValue) ->
                 ( .dna <| StepValue.solution stepValue, StepValue.points stepValue )
             )
 
 
-recursivelyEvolve : Int -> Options dna -> Generator (StepValue (PointedDna dna)) -> Generator (StepValue (PointedDna dna))
+recursivelyEvolve : Int -> Options dna -> Generator (IntermediateValue dna) -> Generator (IntermediateValue dna)
 recursivelyEvolve numGenerations options stepValueGenerator =
     stepValueGenerator
         |> Random.andThen
-            (\stepValue ->
+            (\(IntermediateValue stepValue) ->
                 let
                     bestOrganism =
                         StepValue.solution stepValue
@@ -121,13 +120,28 @@ recursivelyEvolve numGenerations options stepValueGenerator =
                 if options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations then
                     stepValueGenerator
                 else
-                    executeStep options (StepValue.new population bestOrganism)
+                    executeStep options (IntermediateValue <| StepValue.new population bestOrganism)
                         |> recursivelyEvolve (numGenerations + 1) options
             )
 
 
-executeStep : Options dna -> StepValue (PointedDna dna) -> Generator (StepValue (PointedDna dna))
-executeStep options stepValue =
+{-| Executes the first iteration of the genetic algorithm. See `Options` for more information.
+-}
+executeInitialStep : Options dna -> Generator (IntermediateValue dna)
+executeInitialStep { randomDnaGenerator, method } =
+    Random.list population_size randomDnaGenerator
+        |> Random.map
+            (\randDnaList ->
+                randDnaList
+                    |> List.map (\item -> { dna = item, points = initialPoints method })
+                    |> toStepValue
+            )
+
+
+{-| Executes subsequent iterations of the genetic algorithm. See `Options` for more information.
+-}
+executeStep : Options dna -> IntermediateValue dna -> Generator (IntermediateValue dna)
+executeStep options (IntermediateValue stepValue) =
     let
         population =
             StepValue.solutions stepValue
@@ -148,18 +162,7 @@ executeStep options stepValue =
     nextGenerationGenerator options population
         |> Random.map
             (\nextPopulation ->
-                StepValue.new nextPopulation bestSolution
-            )
-
-
-initialPopulationGenerator : Options dna -> Generator (StepValue (PointedDna dna))
-initialPopulationGenerator { randomDnaGenerator, method } =
-    Random.list population_size randomDnaGenerator
-        |> Random.map
-            (\randDnaList ->
-                randDnaList
-                    |> List.map (\item -> { dna = item, points = initialPoints method })
-                    |> toStepValue
+                IntermediateValue <| StepValue.new nextPopulation bestSolution
             )
 
 
@@ -173,13 +176,14 @@ initialPoints method =
             toFloat Random.minInt
 
 
-toStepValue : List (PointedDna dna) -> StepValue (PointedDna dna)
+toStepValue : List (PointedDna dna) -> IntermediateValue dna
 toStepValue pointedDna =
     case pointedDna of
         head :: rest ->
-            StepValue.new
-                (NonemptyHelper.fromHeadRest head rest)
-                head
+            IntermediateValue <|
+                StepValue.new
+                    (NonemptyHelper.fromHeadRest head rest)
+                    head
 
         _ ->
             Debug.crash "Empty DNA list. This shouldn't be possible!"
