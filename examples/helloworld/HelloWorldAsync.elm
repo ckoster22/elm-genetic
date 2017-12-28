@@ -1,71 +1,85 @@
-module HelloWorld exposing (main)
+module HelloWorldAsync exposing (main)
+
+{-
+   This example uses `executeInitialStep`, `executeStep`, and `Random.generate` to try to evolve a solution and printing the progress to a web page as it executes.
+-}
 
 import Array
 import Char
-import Genetic exposing (Method(..), solutionGenerator)
-import Json.Decode as Decode exposing (decodeValue, int)
+import Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep)
+import Html exposing (Html, div, text)
 import Random exposing (Generator, Seed)
-import Task
 
 
-main : Program Decode.Value Model Msg
+main : Program Never Model Msg
 main =
-    Platform.programWithFlags
+    Html.program
         { init = init
         , update = update
+        , view = view
         , subscriptions = \_ -> Sub.none
         }
 
 
-type alias Model =
-    { initialSeed : Int }
+type Model
+    = Init
+    | Value (IntermediateValue Dna) Int
 
 
 type Msg
-    = Begin
+    = NextValue (IntermediateValue Dna)
 
 
-init : Decode.Value -> ( Model, Cmd Msg )
-init json =
-    let
-        initialSeed =
-            case decodeValue int json of
-                Ok seed ->
-                    seed
+options : Options Dna
+options =
+    { randomDnaGenerator = randomDnaGenerator
+    , evaluateSolution = evaluateSolution
+    , crossoverDnas = crossoverDnas
+    , mutateDna = mutateDna
+    , isDoneEvolving = isDoneEvolving
+    , method = MinimizePenalty
+    }
 
-                Err reason ->
-                    Debug.crash <| "Unable to decode program arguments: " ++ reason
 
-        startThingsMsg =
-            Task.succeed Nothing
-                |> Task.perform (always Begin)
-    in
-    { initialSeed = initialSeed } ! [ startThingsMsg ]
+init : ( Model, Cmd Msg )
+init =
+    Init ! [ Random.generate NextValue <| executeInitialStep options ]
+
+
+view : Model -> Html Msg
+view model =
+    case model of
+        Init ->
+            text "Algo not started yet"
+
+        Value intermediateValue iteration ->
+            intermediateValue
+                |> dnaFromValue
+                |> List.map Char.fromCode
+                |> String.fromList
+                |> (\dnaString ->
+                        div []
+                            [ div [] [ text dnaString ]
+                            , div [] [ text <| "iteration: " ++ toString iteration ]
+                            ]
+                   )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        Begin ->
-            let
-                generator =
-                    solutionGenerator
-                        { randomDnaGenerator = randomDnaGenerator
-                        , evaluateSolution = evaluateSolution
-                        , crossoverDnas = crossoverDnas
-                        , mutateDna = mutateDna
-                        , isDoneEvolving = isDoneEvolving
-                        , method = MinimizePenalty
-                        }
-            in
-            Random.initialSeed model.initialSeed
-                |> Random.step generator
-                |> Tuple.first
-                |> Tuple.first
-                |> List.map Char.fromCode
-                |> String.fromList
-                |> Debug.log "Evolved"
-                |> (\_ -> model ! [])
+update (NextValue intermediateValue) model =
+    let
+        iteration =
+            case model of
+                Init ->
+                    0
+
+                Value _ iter ->
+                    iter
+    in
+    if iteration < 8000 then
+        Value intermediateValue (iteration + 1) ! [ Random.generate NextValue <| executeStep options intermediateValue ]
+    else
+        Value intermediateValue (iteration + 1) ! []
 
 
 type alias Dna =
@@ -74,7 +88,7 @@ type alias Dna =
 
 target : String
 target =
-    "Hello world"
+    "Attempting to evolve this sentence in eight thousand generations"
 
 
 target_ascii : List Int

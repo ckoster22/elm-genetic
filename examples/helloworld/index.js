@@ -1,3 +1,3 @@
 const Elm = require('./helloworld');
 
-Elm.HelloWorld.worker((new Date()).getTime());
+Elm.HelloWorldBlocking.worker((new Date()).getTime());

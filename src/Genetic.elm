@@ -1,4 +1,4 @@
-module Genetic exposing (IntermediateValue, Method(..), Options, executeInitialStep, executeStep, solutionGenerator)
+module Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep, solutionGenerator)
 
 {-| An implementation of a genetic algorithm. A single function `solutionGenerator` is exposed which will
 produce a generator that can be used to evolve a "good enough" solution.
@@ -6,7 +6,7 @@ produce a generator that can be used to evolve a "good enough" solution.
 Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
 `True`.
 
-@docs IntermediateValue, Method, Options, solutionGenerator, executeInitialStep, executeStep
+@docs IntermediateValue, Method, Options, solutionGenerator, dnaFromValue, executeInitialStep, executeStep
 
 -}
 
@@ -86,6 +86,13 @@ type alias Options dna =
 -}
 type IntermediateValue dna
     = IntermediateValue (StepValue (PointedDna dna))
+
+
+{-| TODO
+-}
+dnaFromValue : IntermediateValue a -> a
+dnaFromValue (IntermediateValue stepValue) =
+    .dna <| StepValue.solution stepValue
 
 
 {-| Produces a generator that runs the entire genetic algorithm. Note: This can be very slow! Put a max iterations in your `isDoneEvolving` function!
