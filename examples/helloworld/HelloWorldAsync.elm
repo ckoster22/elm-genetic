@@ -75,11 +75,17 @@ update (NextValue intermediateValue) model =
 
                 Value _ iter ->
                     iter
+
+        dna =
+            dnaFromValue intermediateValue
+
+        score =
+            evaluateSolution dna
     in
-    if iteration < 8000 then
-        Value intermediateValue (iteration + 1) ! [ Random.generate NextValue <| executeStep options intermediateValue ]
+    if isDoneEvolving dna score iteration then
+        Value intermediateValue iteration ! []
     else
-        Value intermediateValue (iteration + 1) ! []
+        Value intermediateValue (iteration + 1) ! [ Random.generate NextValue <| executeStep options intermediateValue ]
 
 
 type alias Dna =
@@ -104,7 +110,7 @@ crossover_split_index =
 
 max_iterations : Int
 max_iterations =
-    3000
+    8000
 
 
 randomDnaGenerator : Generator Dna
