@@ -48,21 +48,24 @@ update msg model =
     case msg of
         Begin ->
             let
-                ( bestSolution, penalty, _ ) =
+                solutionGenerator =
                     evolveSolution
                         { randomDnaGenerator = randomDnaGenerator
                         , evaluateSolution = evaluateSolution
                         , crossoverDnas = crossoverDnas
                         , mutateDna = mutateDna
                         , isDoneEvolving = isDoneEvolving
-                        , initialSeed = Random.initialSeed model.initialSeed
                         , method = MinimizePenalty
                         }
-
-                _ =
-                    Debug.log "Evolved" <| String.fromList <| List.map Char.fromCode bestSolution
             in
-            model ! []
+            Random.initialSeed model.initialSeed
+                |> Random.step solutionGenerator
+                |> Tuple.first
+                |> Tuple.first
+                |> List.map Char.fromCode
+                |> String.fromList
+                |> Debug.log "Evolved"
+                |> (\_ -> model ! [])
 
 
 type alias Dna =

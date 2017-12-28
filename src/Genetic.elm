@@ -1,16 +1,19 @@
-module Genetic exposing (Method(..), evolveSolution)
+module Genetic exposing (Method(..), solutionGenerator)
 
-{-| An implementation of a genetic algorithm. A single function `evolveSolution` is exposed and when
-invoked with the appropriate callbacks it will attempt to find an optimal solution.
+{-| An implementation of a genetic algorithm. A single function `solutionGenerator` is exposed which will
+produce a generator that can be used to evolve a "good enough" solution.
 
-@docs Method, evolveSolution
+Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
+`True`.
+
+@docs Method, solutionGenerator
 
 -}
 
-import Genetic.StepValue as StepValue exposing (StepValue)
+import Genetic.StepValue as StepValue exposing (Pointed, StepValue)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
-import Random exposing (Generator, Seed)
+import Random exposing (Generator)
 
 
 population_size : Int
@@ -56,20 +59,18 @@ type alias Options dna =
     , crossoverDnas : dna -> dna -> dna
     , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
     , method : Method
     }
 
 
 {-| Kicks off the genetic algorithm.
 
-There are a handful of callbacks required because the algorithm needs the following information:
+There are a handful of functions required because the algorithm needs the following information:
 
   - How to generate a random solution
   - Given a potential solution, how should it be evaluated?
   - How to breed two solutions
   - Is the current best solution good enough?
-  - An initial random seed
   - Are we maximizing a score or minimizing a penalty?
 
 These details are captured in the following record:
@@ -79,71 +80,53 @@ These details are captured in the following record:
     , crossoverDnas : dna -> dna -> dna
     , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
     , method : Method
     }
 
 The [Hello world](https://github.com/ckoster22/elm-genetic/tree/master/examples/helloworld) example is a good starting point for better understanding these functions.
 
-When the algorithm is finished it'll return the best solution (dna) it could find, the value associated with that solution from `evaluateSolution`, and the next random `Seed` to be used in subsequent `Random` calls.
+When the algorithm is finished it'll return the best solution (dna) it could find and the value associated with that solution from `evaluateSolution`.
 
 -}
-evolveSolution :
+solutionGenerator :
     { randomDnaGenerator : Generator dna
     , evaluateSolution : dna -> Float
     , crossoverDnas : dna -> dna -> dna
     , mutateDna : dna -> Generator dna
     , isDoneEvolving : dna -> Float -> Int -> Bool
-    , initialSeed : Seed
     , method : Method
     }
-    -> ( dna, Float, Seed )
-evolveSolution options =
-    let
-        ( initialStepValue, seed2 ) =
-            generateInitialPopulation options
-
-        ( stepValue, seed3 ) =
-            let
-                ( stepValue, seed3 ) =
-                    executeStep options initialStepValue
-                        |> generate seed2
-            in
-            recursivelyEvolve 0 options stepValue seed3
-    in
-    ( .dna <| StepValue.solution stepValue, StepValue.points stepValue, seed3 )
+    -> Generator ( dna, Float )
+solutionGenerator options =
+    initialPopulationGenerator options
+        |> recursivelyEvolve 0 options
+        |> Random.map
+            (\stepValue ->
+                ( .dna <| StepValue.solution stepValue, StepValue.points stepValue )
+            )
 
 
-recursivelyEvolve : Int -> Options dna -> StepValue { dna : dna, points : Float } -> Seed -> ( StepValue { dna : dna, points : Float }, Seed )
-recursivelyEvolve numGenerations options stepValue seed =
-    let
-        bestOrganism =
-            StepValue.solution stepValue
+recursivelyEvolve : Int -> Options dna -> Generator (StepValue (Pointed { dna : dna })) -> Generator (StepValue (Pointed { dna : dna }))
+recursivelyEvolve numGenerations options stepValueGenerator =
+    stepValueGenerator
+        |> Random.andThen
+            (\stepValue ->
+                let
+                    bestOrganism =
+                        StepValue.solution stepValue
 
-        population =
-            StepValue.solutions stepValue
-    in
-    if options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations then
-        ( stepValue, seed )
-    else
-        let
-            ( nextStepValue, nextSeed ) =
-                executeStep options (StepValue.new population bestOrganism)
-                    |> generate seed
-        in
-        recursivelyEvolve
-            (numGenerations + 1)
-            options
-            nextStepValue
-            nextSeed
+                    population =
+                        StepValue.solutions stepValue
+                in
+                if options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations then
+                    stepValueGenerator
+                else
+                    executeStep options (StepValue.new population bestOrganism)
+                        |> recursivelyEvolve (numGenerations + 1) options
+            )
 
 
-generate : Seed -> Generator a -> ( a, Seed )
-generate seed generator =
-    Random.step generator seed
-
-
-executeStep : Options dna -> StepValue { dna : dna, points : Float } -> Generator (StepValue { dna : dna, points : Float })
+executeStep : Options dna -> StepValue (Pointed { dna : dna }) -> Generator (StepValue (Pointed { dna : dna }))
 executeStep options stepValue =
     let
         population =
@@ -169,18 +152,37 @@ executeStep options stepValue =
             )
 
 
-generateInitialPopulation : Options dna -> ( StepValue { dna : dna, points : Float }, Seed )
-generateInitialPopulation options =
-    let
-        ( initialGeneration, seed ) =
-            options.randomDnaGenerator
-                |> Random.map
-                    (\dna ->
-                        Organism dna <| options.evaluateSolution dna
-                    )
-                |> NonemptyHelper.randomNonemptyList population_size options.initialSeed
-    in
-    ( StepValue.new initialGeneration (NonemptyList.head initialGeneration), seed )
+initialPopulationGenerator : Options dna -> Generator (StepValue (Pointed { dna : dna }))
+initialPopulationGenerator { randomDnaGenerator, method } =
+    Random.list population_size randomDnaGenerator
+        |> Random.map
+            (\randDnaList ->
+                randDnaList
+                    |> List.map (\item -> { dna = item, points = initialPoints method })
+                    |> toStepValue
+            )
+
+
+initialPoints : Method -> Float
+initialPoints method =
+    case method of
+        MinimizePenalty ->
+            toFloat Random.maxInt
+
+        MaximizeScore ->
+            toFloat Random.minInt
+
+
+toStepValue : List (Pointed { dna : dna }) -> StepValue (Pointed { dna : dna })
+toStepValue pointedDna =
+    case pointedDna of
+        head :: rest ->
+            StepValue.new
+                (NonemptyHelper.fromHeadRest head rest)
+                head
+
+        _ ->
+            Debug.crash "Empty DNA list. This shouldn't be possible!"
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)

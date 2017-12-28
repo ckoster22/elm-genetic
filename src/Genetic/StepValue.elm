@@ -1,6 +1,7 @@
 module Genetic.StepValue
     exposing
-        ( StepValue
+        ( Pointed
+        , StepValue
         , new
         , points
         , solution
