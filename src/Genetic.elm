@@ -1,4 +1,4 @@
-module Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep, solutionGenerator)
+module Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep, numGenerationsFromValue, solutionGenerator)
 
 {-| An implementation of a genetic algorithm. A single function `solutionGenerator` is exposed which will
 produce a generator that can be used to evolve a "good enough" solution.
@@ -6,11 +6,10 @@ produce a generator that can be used to evolve a "good enough" solution.
 Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
 `True`.
 
-@docs IntermediateValue, Method, Options, solutionGenerator, dnaFromValue, executeInitialStep, executeStep
+@docs IntermediateValue, Method, Options, dnaFromValue, executeInitialStep, executeStep, numGenerationsFromValue, solutionGenerator
 
 -}
 
-import Genetic.StepValue as StepValue exposing (PointedDna, StepValue)
 import List.Nonempty as NonemptyList exposing (Nonempty)
 import NonemptyHelper
 import Random exposing (Generator)
@@ -81,14 +80,21 @@ type alias Options dna =
 {-| An intermediate value provided between each execution step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
 -}
 type IntermediateValue dna
-    = IntermediateValue (Population dna) (PointedDna dna)
+    = IntermediateValue (Population dna) (PointedDna dna) Int
 
 
 {-| Returns a `dna` for a given `IntermediateValue`
 -}
 dnaFromValue : IntermediateValue a -> a
-dnaFromValue (IntermediateValue _ best) =
+dnaFromValue (IntermediateValue _ best _) =
     best.dna
+
+
+{-| Returns the generation number for a given `IntermediateValue`
+-}
+numGenerationsFromValue : IntermediateValue a -> Int
+numGenerationsFromValue (IntermediateValue _ _ numGenerations) =
+    numGenerations
 
 
 {-| Produces a generator that runs the entire genetic algorithm. Note: This can be very slow! Put a max iterations in your `isDoneEvolving` function!
@@ -101,23 +107,23 @@ When the algorithm is finished it'll return the best solution (dna) it could fin
 solutionGenerator : Options dna -> Generator ( dna, Float )
 solutionGenerator options =
     executeInitialStep options
-        |> recursivelyEvolve 0 options
+        |> recursivelyEvolve options
         |> Random.map
-            (\(IntermediateValue _ best) ->
+            (\(IntermediateValue _ best _) ->
                 ( best.dna, best.points )
             )
 
 
-recursivelyEvolve : Int -> Options dna -> Generator (IntermediateValue dna) -> Generator (IntermediateValue dna)
-recursivelyEvolve numGenerations options stepValueGenerator =
+recursivelyEvolve : Options dna -> Generator (IntermediateValue dna) -> Generator (IntermediateValue dna)
+recursivelyEvolve options stepValueGenerator =
     stepValueGenerator
         |> Random.andThen
-            (\(IntermediateValue population best) ->
+            (\(IntermediateValue population best numGenerations) ->
                 if options.isDoneEvolving best.dna best.points numGenerations then
                     stepValueGenerator
                 else
-                    executeStep options (IntermediateValue population best)
-                        |> recursivelyEvolve (numGenerations + 1) options
+                    executeStep options (IntermediateValue population best numGenerations)
+                        |> recursivelyEvolve options
             )
 
 
@@ -137,7 +143,7 @@ executeInitialStep { randomDnaGenerator, method } =
 {-| Executes subsequent iterations of the genetic algorithm. See `Options` for more information.
 -}
 executeStep : Options dna -> IntermediateValue dna -> Generator (IntermediateValue dna)
-executeStep options (IntermediateValue population best) =
+executeStep options (IntermediateValue population best numGenerations) =
     let
         sortedPopulation =
             NonemptyList.sortBy .points population
@@ -155,7 +161,7 @@ executeStep options (IntermediateValue population best) =
     nextGenerationGenerator options population
         |> Random.map
             (\nextPopulation ->
-                IntermediateValue nextPopulation bestSolution
+                IntermediateValue nextPopulation bestSolution (numGenerations + 1)
             )
 
 
@@ -177,6 +183,7 @@ toStepValue pointedDna =
                 (NonemptyHelper.fromHeadRest head rest)
                 -- Arbitrarily choose the first element as the best
                 head
+                1
 
         _ ->
             Debug.crash "Empty DNA list. This shouldn't be possible!"
