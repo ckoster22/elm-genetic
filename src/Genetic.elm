@@ -39,18 +39,14 @@ type Method
     | MinimizePenalty
 
 
-type alias Organism dna =
+type alias PointedDna dna =
     { dna : dna
     , points : Float
     }
 
 
 type alias Population dna =
-    Nonempty (Organism dna)
-
-
-type Generation dna
-    = Generation (Nonempty (Organism dna))
+    Nonempty (PointedDna dna)
 
 
 {-| There are a handful of functions required because the algorithm needs the following information:
@@ -85,14 +81,14 @@ type alias Options dna =
 {-| An intermediate value provided between each execution step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
 -}
 type IntermediateValue dna
-    = IntermediateValue (StepValue (PointedDna dna))
+    = IntermediateValue (Population dna) (PointedDna dna)
 
 
 {-| Returns a `dna` for a given `IntermediateValue`
 -}
 dnaFromValue : IntermediateValue a -> a
-dnaFromValue (IntermediateValue stepValue) =
-    .dna <| StepValue.solution stepValue
+dnaFromValue (IntermediateValue _ best) =
+    best.dna
 
 
 {-| Produces a generator that runs the entire genetic algorithm. Note: This can be very slow! Put a max iterations in your `isDoneEvolving` function!
@@ -107,8 +103,8 @@ solutionGenerator options =
     executeInitialStep options
         |> recursivelyEvolve 0 options
         |> Random.map
-            (\(IntermediateValue stepValue) ->
-                ( .dna <| StepValue.solution stepValue, StepValue.points stepValue )
+            (\(IntermediateValue _ best) ->
+                ( best.dna, best.points )
             )
 
 
@@ -116,18 +112,11 @@ recursivelyEvolve : Int -> Options dna -> Generator (IntermediateValue dna) -> G
 recursivelyEvolve numGenerations options stepValueGenerator =
     stepValueGenerator
         |> Random.andThen
-            (\(IntermediateValue stepValue) ->
-                let
-                    bestOrganism =
-                        StepValue.solution stepValue
-
-                    population =
-                        StepValue.solutions stepValue
-                in
-                if options.isDoneEvolving bestOrganism.dna bestOrganism.points numGenerations then
+            (\(IntermediateValue population best) ->
+                if options.isDoneEvolving best.dna best.points numGenerations then
                     stepValueGenerator
                 else
-                    executeStep options (IntermediateValue <| StepValue.new population bestOrganism)
+                    executeStep options (IntermediateValue population best)
                         |> recursivelyEvolve (numGenerations + 1) options
             )
 
@@ -148,11 +137,8 @@ executeInitialStep { randomDnaGenerator, method } =
 {-| Executes subsequent iterations of the genetic algorithm. See `Options` for more information.
 -}
 executeStep : Options dna -> IntermediateValue dna -> Generator (IntermediateValue dna)
-executeStep options (IntermediateValue stepValue) =
+executeStep options (IntermediateValue population best) =
     let
-        population =
-            StepValue.solutions stepValue
-
         sortedPopulation =
             NonemptyList.sortBy .points population
 
@@ -169,7 +155,7 @@ executeStep options (IntermediateValue stepValue) =
     nextGenerationGenerator options population
         |> Random.map
             (\nextPopulation ->
-                IntermediateValue <| StepValue.new nextPopulation bestSolution
+                IntermediateValue nextPopulation bestSolution
             )
 
 
@@ -187,10 +173,10 @@ toStepValue : List (PointedDna dna) -> IntermediateValue dna
 toStepValue pointedDna =
     case pointedDna of
         head :: rest ->
-            IntermediateValue <|
-                StepValue.new
-                    (NonemptyHelper.fromHeadRest head rest)
-                    head
+            IntermediateValue
+                (NonemptyHelper.fromHeadRest head rest)
+                -- Arbitrarily choose the first element as the best
+                head
 
         _ ->
             Debug.crash "Empty DNA list. This shouldn't be possible!"
@@ -224,7 +210,7 @@ constantGen val =
     Random.bool |> Random.map (always val)
 
 
-bestOrganismsGenerator : Options dna -> List (Organism dna) -> Generator (List (Organism dna))
+bestOrganismsGenerator : Options dna -> List (PointedDna dna) -> Generator (List (PointedDna dna))
 bestOrganismsGenerator options bestHalfOfPopulation =
     case bestHalfOfPopulation of
         [] ->
@@ -242,7 +228,7 @@ bestOrganismsGenerator options bestHalfOfPopulation =
                     )
 
 
-familyGenerator : Options dna -> Organism dna -> Organism dna -> Generator (List (Organism dna))
+familyGenerator : Options dna -> PointedDna dna -> PointedDna dna -> Generator (List (PointedDna dna))
 familyGenerator options parent1 parent2 =
     let
         bestParent =
@@ -268,7 +254,7 @@ familyGenerator options parent1 parent2 =
         (childGenerator options parent1 parent2)
 
 
-childGenerator : Options dna -> Organism dna -> Organism dna -> Generator (Organism dna)
+childGenerator : Options dna -> PointedDna dna -> PointedDna dna -> Generator (PointedDna dna)
 childGenerator options parent1 parent2 =
     Random.map
         (\dna1IsFirst ->
@@ -281,5 +267,5 @@ childGenerator options parent1 parent2 =
         |> Random.andThen options.mutateDna
         |> Random.map
             (\childDna ->
-                Organism childDna (options.evaluateSolution childDna)
+                PointedDna childDna (options.evaluateSolution childDna)
             )
