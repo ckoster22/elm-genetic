@@ -82,7 +82,7 @@ type alias Options dna =
     }
 
 
-{-| An intermediate value provided between each execute step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
+{-| An intermediate value provided between each execution step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
 -}
 type IntermediateValue dna
     = IntermediateValue (StepValue (PointedDna dna))
