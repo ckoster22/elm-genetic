@@ -225,18 +225,7 @@ mutateAtIndex dna randIndex =
         |> List.indexedMap
             (\index circle ->
                 if index == randIndex then
-                    Random.int 0 3
-                        |> Random.andThen (mutateCircleAttribute circle)
-                    -- |> Random.map
-                    --     (\c ->
-                    --         let
-                    --             _ =
-                    --                 Debug.log "old" circle
-                    --             _ =
-                    --                 Debug.log "new" c
-                    --         in
-                    --         c
-                    --     )
+                    Random.int 0 4 |> Random.andThen (mutateCircleAttribute circle)
                 else
                     RandomExtra.constant circle
             )
@@ -247,32 +236,19 @@ mutateCircleAttribute : Circle -> Int -> Generator Circle
 mutateCircleAttribute circle attrIndex =
     case attrIndex of
         0 ->
-            -- let
-            --     _ =
-            --         Debug.log "mutating x" ""
-            -- in
             mutateX circle
 
         1 ->
-            -- let
-            --     _ =
-            --         Debug.log "mutating y" ""
-            -- in
             mutateY circle
 
         2 ->
-            -- let
-            --     _ =
-            --         Debug.log "mutating radius" ""
-            -- in
             mutateRadius circle
 
+        3 ->
+            mutateColor circle .color (\color -> { circle | color = color })
+
         _ ->
-            -- let
-            --     _ =
-            --         Debug.log "mutating color" ""
-            -- in
-            mutateColor circle
+            mutateColor circle .borderColor (\borderColor -> { circle | borderColor = borderColor })
 
 
 mutateValue : Circle -> Int -> Int -> (Int -> Circle) -> Generator Circle
@@ -308,14 +284,14 @@ mutateRadius circle =
         (\newRadius -> { circle | radius = toFloat newRadius })
 
 
-mutateColor : Circle -> Generator Circle
-mutateColor circle =
+mutateColor : Circle -> (Circle -> Color) -> (Color -> Circle) -> Generator Circle
+mutateColor circle accessor updator =
     Random.int 0 3
         |> Random.andThen
             (\colorIndex ->
                 let
                     colorRecord =
-                        Color.toRgb circle.color
+                        Color.toRgb <| accessor circle
                 in
                 case colorIndex of
                     0 ->
@@ -328,7 +304,7 @@ mutateColor circle =
                                     newColor =
                                         { colorRecord | red = newRed }
                                 in
-                                { circle | color = Color.rgba newColor.red newColor.green newColor.blue newColor.alpha }
+                                updator <| Color.rgba newColor.red newColor.green newColor.blue newColor.alpha
                             )
 
                     1 ->
@@ -341,7 +317,7 @@ mutateColor circle =
                                     newColor =
                                         { colorRecord | green = newGreen }
                                 in
-                                { circle | color = Color.rgba newColor.red newColor.green newColor.blue newColor.alpha }
+                                updator <| Color.rgba newColor.red newColor.green newColor.blue newColor.alpha
                             )
 
                     2 ->
@@ -354,13 +330,13 @@ mutateColor circle =
                                     newColor =
                                         { colorRecord | blue = newBlue }
                                 in
-                                { circle | color = Color.rgba newColor.red newColor.green newColor.blue newColor.alpha }
+                                updator <| Color.rgba newColor.red newColor.green newColor.blue newColor.alpha
                             )
 
                     _ ->
                         Random.float 0 1
                             |> Random.map (\newAlpha -> { colorRecord | alpha = newAlpha })
-                            |> Random.map (\newColor -> { circle | color = Color.rgba newColor.red newColor.green newColor.blue newColor.alpha })
+                            |> Random.map (\newColor -> updator <| Color.rgba newColor.red newColor.green newColor.blue newColor.alpha)
             )
 
 
