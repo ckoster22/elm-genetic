@@ -8,7 +8,7 @@ module BugsBunny exposing (main)
 
 import Array
 import Color exposing (Color)
-import Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep)
+import Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep, numGenerationsFromValue)
 import Html exposing (Html, div, img, text)
 import Html.Attributes exposing (height, id, src, width)
 import Native.NativeModule
@@ -29,8 +29,25 @@ main =
 
 
 type Model
-    = Init
-    | Value (IntermediateValue Dna) Int
+    = Init Settings
+    | Value Settings (IntermediateValue Dna)
+
+
+type alias Settings =
+    { radius : Float
+    , timesStuck : Int
+    , newCircleThreshold : Float
+    , bestScore : Float
+    }
+
+
+initialSettings : Settings
+initialSettings =
+    { radius = 200
+    , timesStuck = 0
+    , newCircleThreshold = 0.99
+    , bestScore = toFloat Random.maxInt
+    }
 
 
 type Msg
@@ -57,7 +74,7 @@ options =
     { randomDnaGenerator = randomDnaGenerator
     , evaluateSolution = evaluateSolution
     , crossoverDnas = crossoverDnas
-    , mutateDna = mutateDna
+    , mutateDna = mutateDna initialSettings
     , isDoneEvolving = isDoneEvolving
     , method = MinimizePenalty
     }
@@ -66,7 +83,7 @@ options =
 init : ( Model, Cmd Msg )
 init =
     -- Process.sleep is a workaround to wait for the bugs bunny image to load
-    Init ! [ Process.sleep 1000 |> Task.andThen (\_ -> Task.succeed InitMsg) |> Task.perform identity ]
+    Init initialSettings ! [ Process.sleep 1000 |> Task.andThen (\_ -> Task.succeed InitMsg) |> Task.perform identity ]
 
 
 view : Model -> Html Msg
@@ -87,11 +104,11 @@ view model =
 iterationView : Model -> Html Msg
 iterationView model =
     case model of
-        Init ->
+        Init _ ->
             text "0"
 
-        Value _ iter ->
-            text <| toString iter
+        Value _ intermediateValue ->
+            text <| toString <| numGenerationsFromValue intermediateValue
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -99,27 +116,61 @@ update msg model =
     case msg of
         NextValue intermediateValue ->
             let
-                iteration =
+                ( iteration, settings ) =
                     case model of
-                        Init ->
-                            0
+                        Init settings ->
+                            ( 0, settings )
 
-                        Value _ iter ->
-                            iter
+                        Value settings intermediateValue ->
+                            ( numGenerationsFromValue intermediateValue, settings )
 
                 dna =
                     dnaFromValue intermediateValue
 
+                score =
+                    evaluateSolution dna
+
+                timesStuck =
+                    if score == settings.bestScore then
+                        settings.timesStuck + 1
+                    else
+                        0
+
+                ( radius, newCircleThreshold, updatedTimesStuck ) =
+                    if timesStuck > 3 then
+                        ( settings.radius - 1, settings.newCircleThreshold * 0.995, 0 )
+                    else
+                        ( settings.radius, settings.newCircleThreshold, timesStuck )
+
+                bestScore =
+                    if score < settings.bestScore then
+                        score
+                    else
+                        settings.bestScore
+
+                updatedSettings =
+                    { radius = radius
+                    , timesStuck = updatedTimesStuck
+                    , newCircleThreshold = newCircleThreshold
+                    , bestScore = bestScore
+                    }
+
+                updatedOptions =
+                    { options | mutateDna = mutateDna updatedSettings }
+
                 _ =
                     Debug.log "# circles" <| List.length dna
 
-                score =
-                    evaluateSolution dna
+                _ =
+                    Debug.log "new circle radius" radius
+
+                _ =
+                    Debug.log "new circle threshold" newCircleThreshold
             in
             if isDoneEvolving dna score iteration then
-                Value intermediateValue iteration ! []
+                Value updatedSettings intermediateValue ! []
             else
-                Value intermediateValue (iteration + 1) ! [ Random.generate Wait <| executeStep options intermediateValue ]
+                Value updatedSettings intermediateValue ! [ Random.generate Wait <| executeStep updatedOptions intermediateValue ]
 
         InitMsg ->
             model ! [ Random.generate NextValue <| executeInitialStep options ]
@@ -131,21 +182,21 @@ update msg model =
 
 max_iterations : Int
 max_iterations =
-    2000
+    4000
 
 
 randomDnaGenerator : Generator Dna
 randomDnaGenerator =
-    Random.list 5 randomCircleGenerator
+    Random.list 5 (randomCircleGenerator 200 200)
 
 
-randomCircleGenerator : Generator Circle
-randomCircleGenerator =
+randomCircleGenerator : Float -> Float -> Generator Circle
+randomCircleGenerator minRadius maxRadius =
     Random.map5
         Circle
         randXGen
         randYGen
-        randRadiusGen
+        (randRadiusGen minRadius maxRadius)
         randColor
         randColor
 
@@ -160,9 +211,9 @@ randYGen =
     Random.float 0 465
 
 
-randRadiusGen : Generator Float
-randRadiusGen =
-    Random.float 5 150
+randRadiusGen : Float -> Float -> Generator Float
+randRadiusGen minRadius maxRadius =
+    Random.float minRadius maxRadius
 
 
 randColor : Generator Color
@@ -195,27 +246,34 @@ crossoverDnas dna1 dna2 =
     List.append dnaPart1 dnaPart2
 
 
-mutateDna : Dna -> Generator Dna
-mutateDna dna =
+mutateDna : Settings -> Dna -> Generator Dna
+mutateDna settings dna =
     Random.float 0 1
         |> Random.andThen
             (\randNum ->
-                if randNum >= 0.97 then
-                    addCircleGenerator dna
+                if randNum >= settings.newCircleThreshold then
+                    addCircleGenerator settings.radius dna
                 else
                     mutateCircleGenerator dna
             )
 
 
-addCircleGenerator : Dna -> Generator Dna
-addCircleGenerator dna =
-    randomCircleGenerator
+addCircleGenerator : Float -> Dna -> Generator Dna
+addCircleGenerator radius dna =
+    randomCircleGenerator radius radius
         |> Random.map (\circle -> List.append dna [ circle ])
 
 
 mutateCircleGenerator : Dna -> Generator Dna
 mutateCircleGenerator dna =
-    Random.int 0 (List.length dna - 1)
+    let
+        initialIndex =
+            if List.length dna > 6 then
+                List.length dna // 2
+            else
+                0
+    in
+    Random.int initialIndex (List.length dna - 1)
         |> Random.andThen (mutateAtIndex dna)
 
 
@@ -279,7 +337,7 @@ mutateRadius : Circle -> Generator Circle
 mutateRadius circle =
     mutateValue
         circle
-        50
+        200
         (round circle.radius)
         (\newRadius -> { circle | radius = toFloat newRadius })
 
