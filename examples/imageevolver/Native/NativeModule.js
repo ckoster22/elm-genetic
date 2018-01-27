@@ -1,3 +1,10 @@
+
+
+
+// Do yourself a favor and don't look at this file. Nothing good will come of it.
+
+
+
 var _ckoster22$elm_genetic$Native_NativeModule = (function () {
     let originalPixels;
 
@@ -18,6 +25,9 @@ var _ckoster22$elm_genetic$Native_NativeModule = (function () {
     }
 
     function evaluate(circles) {
+
+        // If you are reading this, turn back
+
         const flattenedCircles = flatten(circles);
         let originalCanvas = document.querySelector('#originalCanvas');
         let originalContext;

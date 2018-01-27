@@ -97,18 +97,7 @@ view model =
             , id "rabbit"
             ]
             []
-        , iterationView model
         ]
-
-
-iterationView : Model -> Html Msg
-iterationView model =
-    case model of
-        Init _ ->
-            text "0"
-
-        Value _ intermediateValue ->
-            text <| toString <| numGenerationsFromValue intermediateValue
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

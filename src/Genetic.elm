@@ -132,12 +132,12 @@ recursivelyEvolve options stepValueGenerator =
 executeInitialStep : Options dna -> Generator (IntermediateValue dna)
 executeInitialStep { randomDnaGenerator, method } =
     Random.list population_size randomDnaGenerator
-        |> Random.map
-            (\randDnaList ->
-                randDnaList
-                    |> List.map (\item -> { dna = item, points = initialPoints method })
-                    |> toStepValue
-            )
+        |> Random.map (List.map (toPointedDna method) >> toStepValue)
+
+
+toPointedDna : Method -> dna -> PointedDna dna
+toPointedDna method dna =
+    { dna = dna, points = initialPoints method }
 
 
 {-| Executes subsequent iterations of the genetic algorithm. See `Options` for more information.
@@ -263,16 +263,18 @@ familyGenerator options parent1 parent2 =
 
 childGenerator : Options dna -> PointedDna dna -> PointedDna dna -> Generator (PointedDna dna)
 childGenerator options parent1 parent2 =
-    Random.map
-        (\dna1IsFirst ->
-            if dna1IsFirst then
-                options.crossoverDnas parent1.dna parent2.dna
-            else
-                options.crossoverDnas parent2.dna parent1.dna
-        )
-        Random.bool
+    Random.bool
+        |> Random.map (crossoverParents options parent1 parent2)
         |> Random.andThen options.mutateDna
         |> Random.map
             (\childDna ->
                 PointedDna childDna (options.evaluateSolution childDna)
             )
+
+
+crossoverParents : Options dna -> PointedDna dna -> PointedDna dna -> Bool -> dna
+crossoverParents options parent1 parent2 isParent1First =
+    if isParent1First then
+        options.crossoverDnas parent1.dna parent2.dna
+    else
+        options.crossoverDnas parent2.dna parent1.dna
