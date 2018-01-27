@@ -1,6 +1,6 @@
 module Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep, numGenerationsFromValue, solutionGenerator)
 
-{-| An implementation of a genetic algorithm. A single function `solutionGenerator` is exposed which will
+{-| An implementation of a [genetic algorithm](https://www.infoq.com/presentations/genetic-algorithms?utm_source=infoq&utm_medium=videos_homepage&utm_campaign=videos_row1). A single function `solutionGenerator` is exposed which will
 produce a generator that can be used to evolve a "good enough" solution.
 
 Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
