@@ -40,11 +40,11 @@ init json =
                 Err reason ->
                     Debug.crash <| "Unable to decode program arguments: " ++ reason
 
-        startThingsMsg =
-            Task.succeed Nothing
+        initialCmd =
+            Task.succeed ()
                 |> Task.perform (always Begin)
     in
-    { initialSeed = initialSeed } ! [ startThingsMsg ]
+    { initialSeed = initialSeed } ! [ initialCmd ]
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
