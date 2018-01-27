@@ -4,11 +4,15 @@ The "Hello world" of genetic algorithms is still quite large. What follows is a 
 
 #### tl;dr let's run it
 
-From the root of the project..
+Change directory to `./examples/helloworld/`
 
-`elm-make ./examples/helloworld/HelloWorld.elm --output ./examples/helloworld/helloworld.js`
+`elm-make ./examples/helloworld/HelloWorldBlocking.elm --output ./examples/helloworld/helloworld.js`
 
 `node ./examples/helloworld/index.js`
+
+Or
+
+`elm-reactor` and navigate to `http://localhost:8000/HelloWorldAsync.elm`
 
 ### Explanation
 
