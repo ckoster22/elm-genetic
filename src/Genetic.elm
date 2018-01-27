@@ -6,6 +6,10 @@ produce a generator that can be used to evolve a "good enough" solution.
 Note - This generator has a recursive structure and will block the thread until `isDoneEvolving` returns
 `True`.
 
+Alternatively, if you don't want to block the thread you can use `executeInitialStep` and `executeStep` and control when the next iteration of the algorithm executes.
+
+See the `examples` directory for an example of each.
+
 @docs IntermediateValue, Method, Options, dnaFromValue, executeInitialStep, executeStep, numGenerationsFromValue, solutionGenerator
 
 -}
@@ -77,7 +81,7 @@ type alias Options dna =
     }
 
 
-{-| An intermediate value provided between each execution step of the genetic algorithm. This type is necessary when not using `solutionGenerator`.
+{-| An intermediate value provided between each execution step of the genetic algorithm. This type is necessary when using `executeInitialStep` and `executeStep`, but not `solutionGenerator`.
 -}
 type IntermediateValue dna
     = IntermediateValue (Population dna) (PointedDna dna) Int
@@ -85,14 +89,14 @@ type IntermediateValue dna
 
 {-| Returns a `dna` for a given `IntermediateValue`
 -}
-dnaFromValue : IntermediateValue a -> a
+dnaFromValue : IntermediateValue dna -> dna
 dnaFromValue (IntermediateValue _ best _) =
     best.dna
 
 
 {-| Returns the generation number for a given `IntermediateValue`
 -}
-numGenerationsFromValue : IntermediateValue a -> Int
+numGenerationsFromValue : IntermediateValue dna -> Int
 numGenerationsFromValue (IntermediateValue _ _ numGenerations) =
     numGenerations
 
