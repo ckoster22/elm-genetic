@@ -120,13 +120,13 @@ update msg model =
                     evaluateSolution dna
 
                 timesStuck =
-                    if score == settings.bestScore then
+                    if score > settings.bestScore then
                         settings.timesStuck + 1
                     else
                         0
 
                 ( radius, newCircleThreshold, updatedTimesStuck ) =
-                    if timesStuck > 3 then
+                    if timesStuck > 5 then
                         ( settings.radius - 1, settings.newCircleThreshold * 0.995, 0 )
                     else
                         ( settings.radius, settings.newCircleThreshold, timesStuck )
