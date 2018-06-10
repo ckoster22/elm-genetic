@@ -14,8 +14,6 @@ See the `examples` directory for an example of each.
 
 -}
 
-import List.Nonempty as NonemptyList exposing (Nonempty)
-import NonemptyHelper
 import Random exposing (Generator)
 
 
@@ -49,7 +47,7 @@ type alias PointedDna dna =
 
 
 type alias Population dna =
-    Nonempty (PointedDna dna)
+    ( PointedDna dna, List (PointedDna dna) )
 
 
 {-| There are a handful of functions required because the algorithm needs the following information:
@@ -62,13 +60,13 @@ type alias Population dna =
 
 These details are captured in the following record:
 
-    { randomDnaGenerator : Generator dna
-    , evaluateSolution : dna -> Float
-    , crossoverDnas : dna -> dna -> dna
-    , mutateDna : dna -> Generator dna
-    , isDoneEvolving : dna -> Float -> Int -> Bool
-    , method : Method
-    }
+{ randomDnaGenerator : Generator dna
+, evaluateSolution : dna -> Float
+, crossoverDnas : dna -> dna -> dna
+, mutateDna : dna -> Generator dna
+, isDoneEvolving : dna -> Float -> Int -> Bool
+, method : Method
+}
 
 -}
 type alias Options dna =
@@ -147,20 +145,23 @@ toPointedDna method dna =
 {-| Executes subsequent iterations of the genetic algorithm. See `Options` for more information.
 -}
 executeStep : Options dna -> IntermediateValue dna -> Generator (IntermediateValue dna)
-executeStep options (IntermediateValue population best numGenerations) =
+executeStep options (IntermediateValue (( popHead, popTail ) as population) best numGenerations) =
     let
         sortedPopulation =
-            NonemptyList.sortBy .points population
+            List.sortBy .points (popHead :: popTail)
 
         bestSolution =
             case options.method of
                 MaximizeScore ->
-                    sortedPopulation
-                        |> NonemptyList.reverse
-                        |> NonemptyList.head
+                    case List.reverse popTail of
+                        [] ->
+                            popHead
+
+                        tail :: _ ->
+                            tail
 
                 MinimizePenalty ->
-                    NonemptyList.head sortedPopulation
+                    popHead
     in
     nextGenerationGenerator options population
         |> Random.map
@@ -184,7 +185,7 @@ toStepValue pointedDna =
     case pointedDna of
         head :: rest ->
             IntermediateValue
-                (NonemptyHelper.fromHeadRest head rest)
+                ( head, rest )
                 -- Arbitrarily choose the first element as the best
                 head
                 1
@@ -194,12 +195,10 @@ toStepValue pointedDna =
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)
-nextGenerationGenerator options currPopulation =
+nextGenerationGenerator options (( popHead, popTail ) as currPopulation) =
     let
         sortedPopulation =
-            currPopulation
-                |> NonemptyList.sortBy .points
-                |> NonemptyList.toList
+            List.sortBy .points (popHead :: popTail)
 
         bestHalfOfPopulation =
             case options.method of
@@ -212,7 +211,12 @@ nextGenerationGenerator options currPopulation =
     bestOrganismsGenerator options bestHalfOfPopulation
         |> Random.map
             (\organismList ->
-                organismList |> NonemptyList.fromList |> Maybe.withDefault currPopulation
+                case organismList of
+                    head :: tail ->
+                        ( head, tail )
+
+                    _ ->
+                        currPopulation
             )
 
 
