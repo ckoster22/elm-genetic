@@ -123,6 +123,7 @@ recursivelyEvolve options stepValueGenerator =
             (\(IntermediateValue population best numGenerations) ->
                 if options.isDoneEvolving best.dna best.points numGenerations then
                     stepValueGenerator
+
                 else
                     executeStep options (IntermediateValue population best numGenerations)
                         |> recursivelyEvolve options
@@ -220,19 +221,14 @@ nextGenerationGenerator options (( popHead, popTail ) as currPopulation) =
             )
 
 
-constantGen : a -> Generator a
-constantGen val =
-    Random.bool |> Random.map (always val)
-
-
 bestOrganismsGenerator : Options dna -> List (PointedDna dna) -> Generator (List (PointedDna dna))
 bestOrganismsGenerator options bestHalfOfPopulation =
     case bestHalfOfPopulation of
         [] ->
-            constantGen []
+            Random.constant []
 
         [ organism ] ->
-            constantGen [ organism ]
+            Random.constant [ organism ]
 
         prev :: curr :: rest ->
             familyGenerator options prev curr
@@ -251,12 +247,14 @@ familyGenerator options parent1 parent2 =
                 MaximizeScore ->
                     if parent1.points > parent2.points then
                         parent1
+
                     else
                         parent2
 
                 MinimizePenalty ->
                     if parent1.points < parent2.points then
                         parent1
+
                     else
                         parent2
     in
@@ -271,7 +269,8 @@ familyGenerator options parent1 parent2 =
 
 childGenerator : Options dna -> PointedDna dna -> PointedDna dna -> Generator (PointedDna dna)
 childGenerator options parent1 parent2 =
-    Random.bool
+    Random.int 0 1
+        |> Random.map (\i -> i == 0)
         |> Random.map (crossoverParents options parent1 parent2)
         |> Random.andThen options.mutateDna
         |> Random.map
@@ -284,5 +283,6 @@ crossoverParents : Options dna -> PointedDna dna -> PointedDna dna -> Bool -> dn
 crossoverParents options parent1 parent2 isParent1First =
     if isParent1First then
         options.crossoverDnas parent1.dna parent2.dna
+
     else
         options.crossoverDnas parent2.dna parent1.dna

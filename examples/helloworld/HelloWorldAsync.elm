@@ -43,7 +43,9 @@ options =
 
 init : ( Model, Cmd Msg )
 init =
-    Init ! [ Random.generate NextValue <| executeInitialStep options ]
+    ( Init
+    , Random.generate NextValue <| executeInitialStep options
+    )
 
 
 view : Model -> Html Msg
@@ -83,9 +85,14 @@ update (NextValue intermediateValue) model =
             evaluateSolution dna
     in
     if isDoneEvolving dna score iteration then
-        Value intermediateValue iteration ! []
+        ( Value intermediateValue iteration
+        , Cmd.none
+        )
+
     else
-        Value intermediateValue (iteration + 1) ! [ Random.generate NextValue <| executeStep options intermediateValue ]
+        ( Value intermediateValue (iteration + 1)
+        , Random.generate NextValue <| executeStep options intermediateValue
+        )
 
 
 type alias Dna =
@@ -124,8 +131,10 @@ asciiCodeMapper : Int -> Int
 asciiCodeMapper code =
     if code < 27 then
         code + 64
+
     else if code /= 53 then
         code + 70
+
     else
         32
 
@@ -180,6 +189,7 @@ mutateDna dna =
                     (\index asciiCode ->
                         if index == randomIndex then
                             randomAsciiCode
+
                         else
                             asciiCode
                     )

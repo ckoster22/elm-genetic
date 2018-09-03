@@ -44,7 +44,9 @@ init json =
             Task.succeed ()
                 |> Task.perform (always Begin)
     in
-    { initialSeed = initialSeed } ! [ initialCmd ]
+    ( { initialSeed = initialSeed }
+    , initialCmd
+    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -69,7 +71,11 @@ update msg model =
                 |> List.map Char.fromCode
                 |> String.fromList
                 |> Debug.log "Evolved"
-                |> (\_ -> model ! [])
+                |> (\_ ->
+                        ( model
+                        , Cmd.none
+                        )
+                   )
 
 
 type alias Dna =
@@ -108,8 +114,10 @@ asciiCodeMapper : Int -> Int
 asciiCodeMapper code =
     if code < 27 then
         code + 64
+
     else if code /= 53 then
         code + 70
+
     else
         32
 
@@ -164,6 +172,7 @@ mutateDna dna =
                     (\index asciiCode ->
                         if index == randomIndex then
                             randomAsciiCode
+
                         else
                             asciiCode
                     )

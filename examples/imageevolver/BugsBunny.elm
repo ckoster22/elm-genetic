@@ -83,7 +83,9 @@ options =
 init : ( Model, Cmd Msg )
 init =
     -- Process.sleep is a workaround to wait for the bugs bunny image to load
-    Init initialSettings ! [ Process.sleep 1000 |> Task.andThen (\_ -> Task.succeed InitMsg) |> Task.perform identity ]
+    ( Init initialSettings
+    , Process.sleep 1000 |> Task.andThen (\_ -> Task.succeed InitMsg) |> Task.perform identity
+    )
 
 
 view : Model -> Html Msg
@@ -122,18 +124,21 @@ update msg model =
                 timesStuck =
                     if score > settings.bestScore then
                         settings.timesStuck + 1
+
                     else
                         0
 
                 ( radius, newCircleThreshold, updatedTimesStuck ) =
                     if timesStuck > 5 then
                         ( settings.radius - 1, settings.newCircleThreshold * 0.995, 0 )
+
                     else
                         ( settings.radius, settings.newCircleThreshold, timesStuck )
 
                 bestScore =
                     if score < settings.bestScore then
                         score
+
                     else
                         settings.bestScore
 
@@ -157,16 +162,25 @@ update msg model =
                     Debug.log "new circle threshold" newCircleThreshold
             in
             if isDoneEvolving dna score iteration then
-                Value updatedSettings intermediateValue ! []
+                ( Value updatedSettings intermediateValue
+                , Cmd.none
+                )
+
             else
-                Value updatedSettings intermediateValue ! [ Random.generate Wait <| executeStep updatedOptions intermediateValue ]
+                ( Value updatedSettings intermediateValue
+                , Random.generate Wait <| executeStep updatedOptions intermediateValue
+                )
 
         InitMsg ->
-            model ! [ Random.generate NextValue <| executeInitialStep options ]
+            ( model
+            , Random.generate NextValue <| executeInitialStep options
+            )
 
         Wait intermediateValue ->
             -- This Process.sleep is there to allow the screen to draw and allow us to see it evolve in real time
-            model ! [ Process.sleep 1 |> Task.andThen (\_ -> Task.succeed (NextValue intermediateValue)) |> Task.perform identity ]
+            ( model
+            , Process.sleep 1 |> Task.andThen (\_ -> Task.succeed (NextValue intermediateValue)) |> Task.perform identity
+            )
 
 
 max_iterations : Int
@@ -242,6 +256,7 @@ mutateDna settings dna =
             (\randNum ->
                 if randNum >= settings.newCircleThreshold then
                     addCircleGenerator settings.radius dna
+
                 else
                     mutateCircleGenerator dna
             )
@@ -259,6 +274,7 @@ mutateCircleGenerator dna =
         initialIndex =
             if List.length dna > 6 then
                 List.length dna // 2
+
             else
                 0
     in
@@ -273,6 +289,7 @@ mutateAtIndex dna randIndex =
             (\index circle ->
                 if index == randIndex then
                     Random.int 0 4 |> Random.andThen (mutateCircleAttribute circle)
+
                 else
                     RandomExtra.constant circle
             )
@@ -393,6 +410,7 @@ randomIntRange maxValue current =
         (\delta shouldAdd ->
             if shouldAdd then
                 min 555 (current + delta)
+
             else
                 max 0 (current - delta)
         )
