@@ -1,3 +1,5 @@
-const Elm = require('./helloworld');
+const { Elm } = require('./helloworld');
 
-Elm.HelloWorldBlocking.worker((new Date()).getTime());
+Elm.HelloWorldBlocking.init({
+    flags: Date.now()
+});

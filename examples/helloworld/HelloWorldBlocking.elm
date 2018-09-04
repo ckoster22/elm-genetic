@@ -14,15 +14,16 @@ import Task
 
 main : Program Decode.Value Model Msg
 main =
-    Platform.programWithFlags
+    Platform.worker
         { init = init
         , update = update
         , subscriptions = \_ -> Sub.none
         }
 
 
-type alias Model =
-    { initialSeed : Int }
+type Model
+    = Init
+    | WithSeed Int
 
 
 type Msg
@@ -32,27 +33,22 @@ type Msg
 init : Decode.Value -> ( Model, Cmd Msg )
 init json =
     let
-        initialSeed =
-            case decodeValue int json of
-                Ok seed ->
-                    seed
-
-                Err reason ->
-                    Debug.crash <| "Unable to decode program arguments: " ++ reason
+        model =
+            decodeValue int json
+                |> Result.map WithSeed
+                |> Result.withDefault Init
 
         initialCmd =
             Task.succeed ()
                 |> Task.perform (always Begin)
     in
-    ( { initialSeed = initialSeed }
-    , initialCmd
-    )
+    ( model, initialCmd )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        Begin ->
+    case ( msg, model ) of
+        ( Begin, WithSeed seed ) ->
             let
                 generator =
                     solutionGenerator
@@ -64,7 +60,7 @@ update msg model =
                         , method = MinimizePenalty
                         }
             in
-            Random.initialSeed model.initialSeed
+            Random.initialSeed seed
                 |> Random.step generator
                 |> Tuple.first
                 |> Tuple.first
@@ -77,25 +73,28 @@ update msg model =
                         )
                    )
 
+        _ ->
+            ( model, Cmd.none )
+
 
 type alias Dna =
     List Int
 
 
-target : String
-target =
+targetSentence : String
+targetSentence =
     "Hello world"
 
 
 target_ascii : List Int
 target_ascii =
-    String.toList target
+    String.toList targetSentence
         |> List.map Char.toCode
 
 
 crossover_split_index : Int
 crossover_split_index =
-    floor (toFloat (String.length target) / 2)
+    floor (toFloat (String.length targetSentence) / 2)
 
 
 max_iterations : Int
@@ -107,7 +106,7 @@ randomDnaGenerator : Generator Dna
 randomDnaGenerator =
     Random.int 1 53
         |> Random.map asciiCodeMapper
-        |> Random.list (String.length target)
+        |> Random.list (String.length targetSentence)
 
 
 asciiCodeMapper : Int -> Int
@@ -124,25 +123,8 @@ asciiCodeMapper code =
 
 evaluateSolution : Dna -> Float
 evaluateSolution dna =
-    target_ascii
-        |> Array.fromList
-        |> Array.foldl
-            (\asciiCode ( points, index ) ->
-                let
-                    organismAscii_ =
-                        dna
-                            |> Array.fromList
-                            |> Array.get index
-                in
-                case organismAscii_ of
-                    Just organismAscii ->
-                        ( points + abs (organismAscii - asciiCode), index + 1 )
-
-                    Nothing ->
-                        Debug.crash "Organism dna is too short!"
-            )
-            ( 0, 0 )
-        |> Tuple.first
+    List.map2 (\target gene -> abs (target - gene)) target_ascii dna
+        |> List.foldl (\diff score -> diff + score) 0
         |> toFloat
 
 
@@ -159,7 +141,7 @@ mutateDna : Dna -> Generator Dna
 mutateDna dna =
     let
         randIndexGenerator =
-            Random.int 0 (String.length target - 1)
+            Random.int 0 (String.length targetSentence - 1)
 
         randAsciiCodeGenerator =
             Random.int 1 53

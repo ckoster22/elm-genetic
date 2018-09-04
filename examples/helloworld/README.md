@@ -6,7 +6,7 @@ The "Hello world" of genetic algorithms is still quite large. What follows is a 
 
 Change directory to `./examples/helloworld/`
 
-`elm-make ./examples/helloworld/HelloWorldBlocking.elm --output ./examples/helloworld/helloworld.js`
+`elm make ./examples/helloworld/HelloWorldBlocking.elm --output ./examples/helloworld/helloworld.js`
 
 `node ./examples/helloworld/index.js`
 

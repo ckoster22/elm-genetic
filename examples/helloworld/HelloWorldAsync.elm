@@ -5,19 +5,22 @@ module HelloWorldAsync exposing (main)
 -}
 
 import Array
+import Browser
+import Browser.Events
 import Char
 import Genetic exposing (IntermediateValue, Method(..), Options, dnaFromValue, executeInitialStep, executeStep)
 import Html exposing (Html, div, text)
+import Html.Attributes exposing (style)
 import Random exposing (Generator, Seed)
 
 
-main : Program Never Model Msg
+main : Program () Model Msg
 main =
-    Html.program
+    Browser.element
         { init = init
         , update = update
         , view = view
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = \_ -> Browser.Events.onAnimationFrame (\_ -> UpdateView)
         }
 
 
@@ -28,6 +31,7 @@ type Model
 
 type Msg
     = NextValue (IntermediateValue Dna)
+    | UpdateView
 
 
 options : Options Dna
@@ -41,11 +45,9 @@ options =
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( Init
-    , Random.generate NextValue <| executeInitialStep options
-    )
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( Init, Random.generate NextValue <| executeInitialStep options )
 
 
 view : Model -> Html Msg
@@ -60,59 +62,80 @@ view model =
                 |> List.map Char.fromCode
                 |> String.fromList
                 |> (\dnaString ->
-                        div []
+                        div [ style "font-family" "Courier New" ]
                             [ div [] [ text dnaString ]
-                            , div [] [ text <| "iteration: " ++ toString iteration ]
+                            , div [] [ text <| "Iteration: " ++ String.fromInt iteration ]
                             ]
                    )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update (NextValue intermediateValue) model =
-    let
-        iteration =
+update msg model =
+    case msg of
+        NextValue intermediateValue ->
+            let
+                iteration =
+                    case model of
+                        Init ->
+                            0
+
+                        Value _ iter ->
+                            iter
+
+                dna =
+                    dnaFromValue intermediateValue
+
+                score =
+                    evaluateSolution dna
+
+                cmd =
+                    if iteration > 0 && modBy 100 iteration == 0 then
+                        Cmd.none
+
+                    else
+                        Random.generate NextValue <| executeStep options intermediateValue
+            in
+            if isDoneEvolving dna score iteration then
+                ( Value intermediateValue iteration
+                , Cmd.none
+                )
+
+            else
+                ( Value intermediateValue (iteration + 1)
+                , cmd
+                )
+
+        UpdateView ->
             case model of
                 Init ->
-                    0
+                    ( model, Cmd.none )
 
-                Value _ iter ->
-                    iter
+                Value intermediateValue iterations ->
+                    if iterations >= max_iterations then
+                        ( model, Cmd.none )
 
-        dna =
-            dnaFromValue intermediateValue
-
-        score =
-            evaluateSolution dna
-    in
-    if isDoneEvolving dna score iteration then
-        ( Value intermediateValue iteration
-        , Cmd.none
-        )
-
-    else
-        ( Value intermediateValue (iteration + 1)
-        , Random.generate NextValue <| executeStep options intermediateValue
-        )
+                    else
+                        ( model, Random.generate NextValue <| executeStep options intermediateValue )
 
 
 type alias Dna =
     List Int
 
 
-target : String
-target =
+targetSentence : String
+targetSentence =
     "Attempting to evolve this sentence in eight thousand generations"
 
 
 target_ascii : List Int
 target_ascii =
-    String.toList target
+    String.toList targetSentence
         |> List.map Char.toCode
 
 
 crossover_split_index : Int
 crossover_split_index =
-    floor (toFloat (String.length target) / 2)
+    floor (toFloat (String.length targetSentence) / 2)
 
 
 max_iterations : Int
@@ -124,7 +147,7 @@ randomDnaGenerator : Generator Dna
 randomDnaGenerator =
     Random.int 1 53
         |> Random.map asciiCodeMapper
-        |> Random.list (String.length target)
+        |> Random.list (String.length targetSentence)
 
 
 asciiCodeMapper : Int -> Int
@@ -141,25 +164,8 @@ asciiCodeMapper code =
 
 evaluateSolution : Dna -> Float
 evaluateSolution dna =
-    target_ascii
-        |> Array.fromList
-        |> Array.foldl
-            (\asciiCode ( points, index ) ->
-                let
-                    organismAscii_ =
-                        dna
-                            |> Array.fromList
-                            |> Array.get index
-                in
-                case organismAscii_ of
-                    Just organismAscii ->
-                        ( points + abs (organismAscii - asciiCode), index + 1 )
-
-                    Nothing ->
-                        Debug.crash "Organism dna is too short!"
-            )
-            ( 0, 0 )
-        |> Tuple.first
+    List.map2 (\target gene -> abs (target - gene)) target_ascii dna
+        |> List.foldl (\diff score -> diff + score) 0
         |> toFloat
 
 
@@ -176,7 +182,7 @@ mutateDna : Dna -> Generator Dna
 mutateDna dna =
     let
         randIndexGenerator =
-            Random.int 0 (String.length target - 1)
+            Random.int 0 (String.length targetSentence - 1)
 
         randAsciiCodeGenerator =
             Random.int 1 53
@@ -200,8 +206,4 @@ mutateDna dna =
 
 isDoneEvolving : Dna -> Float -> Int -> Bool
 isDoneEvolving bestDna bestDnaPoints numGenerations =
-    let
-        _ =
-            Debug.log "" (List.map Char.fromCode bestDna |> String.fromList)
-    in
     bestDnaPoints == 0 || numGenerations >= max_iterations

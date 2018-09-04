@@ -134,8 +134,12 @@ recursivelyEvolve options stepValueGenerator =
 -}
 executeInitialStep : Options dna -> Generator (IntermediateValue dna)
 executeInitialStep { randomDnaGenerator, method } =
-    Random.list population_size randomDnaGenerator
-        |> Random.map (List.map (toPointedDna method) >> toStepValue)
+    Random.map2
+        (\first rest ->
+            toStepValue ( toPointedDna method first, List.map (toPointedDna method) rest )
+        )
+        randomDnaGenerator
+        (Random.list (population_size - 1) randomDnaGenerator)
 
 
 toPointedDna : Method -> dna -> PointedDna dna
@@ -181,18 +185,13 @@ initialPoints method =
             toFloat Random.minInt
 
 
-toStepValue : List (PointedDna dna) -> IntermediateValue dna
-toStepValue pointedDna =
-    case pointedDna of
-        head :: rest ->
-            IntermediateValue
-                ( head, rest )
-                -- Arbitrarily choose the first element as the best
-                head
-                1
-
-        _ ->
-            Debug.crash "Empty DNA list. This shouldn't be possible!"
+toStepValue : ( PointedDna dna, List (PointedDna dna) ) -> IntermediateValue dna
+toStepValue ( head, rest ) =
+    IntermediateValue
+        ( head, rest )
+        -- Arbitrarily choose the first element as the best
+        head
+        1
 
 
 nextGenerationGenerator : Options dna -> Population dna -> Generator (Population dna)
